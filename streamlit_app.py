@@ -159,9 +159,11 @@ with tab2:
     total = filtered_df.shape[0] if filtered_df.shape[0] > 0 else 1
 
     # Diabetes
-    with col1:
+      with col1:
+        total = len(filtered_df)
         diabetes_count = (filtered_df["Diagnóstico médico de diabetes"] == "Sí").sum()
-        diabetes_prev = (diabetes_count / total) * 100
+        diabetes_prev = (diabetes_count / total) * 100 if total > 0 else 0
+    
         st.markdown(f"""
         <div style="background-color:#FFCCCC; padding:15px; border-radius:12px; text-align:center;">
             <h4>Diabetes</h4>
@@ -169,6 +171,7 @@ with tab2:
             <p>{diabetes_count} casos</p>
         </div>
         """, unsafe_allow_html=True)
+
 
     # Prediabetes
     with col2:
