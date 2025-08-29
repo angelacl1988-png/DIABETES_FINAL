@@ -154,6 +154,32 @@ with tab1:
 # ------------------------------------------------
 with tab2:
 
+         Función para calcular prevalencia
+    def calcular_prevalencia(df, columna):
+        total = len(df)
+        if total == 0:
+            return 0
+        positivos = (df[columna] == "Sí").sum()
+        prevalencia = (positivos / total) * 100
+        return prevalencia
+    
+    # Calcular prevalencias
+    prevalencia_diabetes = calcular_prevalencia(df, "Diagnóstico médico de diabetes")
+    prevalencia_insulina = calcular_prevalencia(df, "Uso de insulina")
+    prevalencia_prediabetes = calcular_prevalencia(df, "Prediabetes")
+    
+    # Mostrar en Streamlit
+    st.title("Prevalencias de Condiciones Médicas")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric(label="Diabetes", value=f"{prevalencia_diabetes:.2f}%")
+    with col2:
+        st.metric(label="Uso de Insulina", value=f"{prevalencia_insulina:.2f}%")
+    with col3:
+        st.metric(label="Prediabetes", value=f"{prevalencia_prediabetes:.2f}%")
+
 
 
     st.subheader("📊 Análisis interactivo de variables vs Diabetes")
