@@ -168,7 +168,7 @@ with tab2:
 
     # --- Diabetes ---
     diabetes_count = (filtered_df["Diagnóstico médico de diabetes"] == "Sí").sum()
-    diabetes_prev = (diabetes_count / total_diabetes) * 100 if total_diabetes > 0 else 0
+    diabetes_prev = (diabetes_count / total_diabetes) * 100
     with col1:
         st.markdown(f"""
         <div style="background-color:#FFCCCC; padding:15px; border-radius:12px; text-align:center;">
