@@ -162,10 +162,10 @@ with tab2:
     filtered_df["Uso actual de insulina"] = filtered_df["Uso actual de insulina"].astype(str).str.strip().str.capitalize()
     
     # Evitar división por cero y contar solo datos válidos
-    total_diabetes = filtered_df["Diagnóstico médico de diabetes"].sum()
-    total_prediabetes = filtered_df["Diagnóstico médico de prediabetes"].sum()
-    total_insulina = filtered_df["Uso actual de insulina"].sum()
-    total_hba1c = filtered_df["Hemoglobina HbA1c (%) "].sum()
+    total_diabetes = filtered_df["Diagnóstico médico de diabetes"].notna().sum()
+    total_prediabetes = filtered_df["Diagnóstico médico de prediabetes"].notna().sum()
+    total_insulina = filtered_df["Uso actual de insulina"].notna().sum()
+    total_hba1c = filtered_df["Hemoglobina HbA1c (%) "].notna().sum()
 
     # --- Diabetes ---
     diabetes_count = (filtered_df["Diagnóstico médico de diabetes"] == "Sí").sum()
