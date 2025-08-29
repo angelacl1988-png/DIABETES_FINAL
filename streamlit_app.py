@@ -160,53 +160,59 @@ with tab2:
 # Evitar división por cero
 total = filtered_df.shape[0] if filtered_df.shape[0] > 0 else 1
 
-    # Diabetes
-    with col1:
-        diabetes_count = (filtered_df["Diagnóstico médico de diabetes"] == "Sí").sum()
-        diabetes_prev = (diabetes_count / total) * 100
-        st.markdown(f"""
-        <div style="background-color:#FFCCCC; padding:15px; border-radius:12px; text-align:center;">
-            <h4>Diabetes</h4>
-            <h2>{diabetes_prev:.1f}%</h2>
-            <p>{diabetes_count} casos</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # Prediabetes
-    with col2:
-        prediabetes_count = (filtered_df["Diagnóstico médico de prediabetes"] == "Sí").sum()
-        prediabetes_prev = (prediabetes_count / total) * 100
-        st.markdown(f"""
-        <div style="background-color:#FFE5B4; padding:15px; border-radius:12px; text-align:center;">
-            <h4>Prediabetes</h4>
-            <h2>{prediabetes_prev:.1f}%</h2>
-            <p>{prediabetes_count} casos</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # Uso de insulina
-    with col3:
-        insulina_count = (filtered_df["Uso actual de insulina"] == "Sí").sum()
-        insulina_prev = (insulina_count / total) * 100
-        st.markdown(f"""
-        <div style="background-color:#CCE5FF; padding:15px; border-radius:12px; text-align:center;">
-            <h4>Uso de Insulina</h4>
-            <h2>{insulina_prev:.1f}%</h2>
-            <p>{insulina_count} casos</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # Diabetes controlada (HbA1c < 7)
-    with col4:
-        controlada_count = (filtered_df["Hemoglobina HbA1c (%) "] < 7).sum()
-        controlada_prev = (controlada_count / total) * 100
-        st.markdown(f"""
-        <div style="background-color:#D4EDDA; padding:15px; border-radius:12px; text-align:center;">
-            <h4>Diabetes controlada</h4>
-            <h2>{controlada_prev:.1f}%</h2>
-            <p>{controlada_count} pacientes controlados</p>
-        </div>
-        """, unsafe_allow_html=True)
+col1, col2, col3, col4 = st.columns(4)
+
+# Evitar división por cero
+total = filtered_df.shape[0] if filtered_df.shape[0] > 0 else 1
+
+# Diabetes
+with col1:
+    diabetes_count = (filtered_df["Diagnóstico médico de diabetes"] == "Sí").sum()
+    diabetes_prev = (diabetes_count / total) * 100
+    st.markdown(f"""
+    <div style="background-color:#FFCCCC; padding:15px; border-radius:12px; text-align:center;">
+        <h4>Diabetes</h4>
+        <h2>{diabetes_prev:.1f}%</h2>
+        <p>{diabetes_count} casos</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Prediabetes
+with col2:
+    prediabetes_count = (filtered_df["Diagnóstico médico de prediabetes"] == "Sí").sum()
+    prediabetes_prev = (prediabetes_count / total) * 100
+    st.markdown(f"""
+    <div style="background-color:#FFE5B4; padding:15px; border-radius:12px; text-align:center;">
+        <h4>Prediabetes</h4>
+        <h2>{prediabetes_prev:.1f}%</h2>
+        <p>{prediabetes_count} casos</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Uso de insulina
+with col3:
+    insulina_count = (filtered_df["Uso actual de insulina"] == "Sí").sum()
+    insulina_prev = (insulina_count / total) * 100
+    st.markdown(f"""
+    <div style="background-color:#CCE5FF; padding:15px; border-radius:12px; text-align:center;">
+        <h4>Uso de Insulina</h4>
+        <h2>{insulina_prev:.1f}%</h2>
+        <p>{insulina_count} casos</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Diabetes controlada (HbA1c < 7)
+with col4:
+    controlada_count = (filtered_df["Hemoglobina HbA1c (%) "] < 7).sum()
+    controlada_prev = (controlada_count / total) * 100
+    st.markdown(f"""
+    <div style="background-color:#D4EDDA; padding:15px; border-radius:12px; text-align:center;">
+        <h4>Diabetes controlada</h4>
+        <h2>{controlada_prev:.1f}%</h2>
+        <p>{controlada_count} pacientes controlados</p>
+    </div>
+    """, unsafe_allow_html=True)
+
 
     st.subheader("📊 Análisis interactivo de variables vs Diabetes")
 
