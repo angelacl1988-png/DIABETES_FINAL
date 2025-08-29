@@ -785,6 +785,6 @@ with tab5:
         st.write(f"**AUC RandomForest:** {auc_rf:.3f}")
         st.success(f"🏆 Método ganador según AUC: **{ganador_final}**")
 
-        }
+        
 
 
