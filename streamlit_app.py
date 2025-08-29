@@ -30,21 +30,6 @@ st.title("NHANES DIABETES Dashboard (2021-2023)")
 # === Cargar base ===
 df = pd.read_csv("nhanes_limpio.csv")
 
-# -----------------------------
-# Tabla de frecuencia
-# -----------------------------
-frecuencia = df['Diagnóstico médico de diabetes'].value_counts()
-frecuencia_relativa = df['Diagnóstico médico de diabetes'].value_counts(normalize=True) * 100
-
-tabla_frecuencia = pd.DataFrame({
-    'Frecuencia': frecuencia,
-    'Porcentaje (%)': frecuencia_relativa
-})
-
-# Mostrar tabla en Streamlit
-st.subheader("Tabla de frecuencia de diabetes")
-st.dataframe(tabla_frecuencia)
-
 
 # === Sidebar Filtros ===
 # === Filtros en sidebar ===
@@ -177,10 +162,10 @@ with tab2:
     filtered_df["Uso actual de insulina"] = filtered_df["Uso actual de insulina"].astype(str).str.strip().str.capitalize()
     
     # Evitar división por cero y contar solo datos válidos
-    total_diabetes = filtered_df["Diagnóstico médico de diabetes"].notna().sum()
-    total_prediabetes = filtered_df["Diagnóstico médico de prediabetes"].notna().sum()
-    total_insulina = filtered_df["Uso actual de insulina"].notna().sum()
-    total_hba1c = filtered_df["Hemoglobina HbA1c (%) "].notna().sum()
+    total_diabetes = filtered_df["Diagnóstico médico de diabetes"].sum()
+    total_prediabetes = filtered_df["Diagnóstico médico de prediabetes"].sum()
+    total_insulina = filtered_df["Uso actual de insulina"].sum()
+    total_hba1c = filtered_df["Hemoglobina HbA1c (%) "].sum()
 
     # --- Diabetes ---
     diabetes_count = (filtered_df["Diagnóstico médico de diabetes"] == "Sí").sum()
