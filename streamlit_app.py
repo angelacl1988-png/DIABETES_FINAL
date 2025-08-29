@@ -155,15 +155,15 @@ with tab2:
 
     # ---- Indicadores ----
 
-    col1, col2, col3, col4 = st.columns(4)
-    total = filtered_df.shape[0] if filtered_df.shape[0] > 0 else 1
+   col1, col2, col3, col4 = st.columns(4)
+
+# Evitar división por cero
+total = filtered_df.shape[0] if filtered_df.shape[0] > 0 else 1
 
     # Diabetes
-      with col1:
-        total = len(filtered_df)
+    with col1:
         diabetes_count = (filtered_df["Diagnóstico médico de diabetes"] == "Sí").sum()
-        diabetes_prev = (diabetes_count / total) * 100 if total > 0 else 0
-    
+        diabetes_prev = (diabetes_count / total) * 100
         st.markdown(f"""
         <div style="background-color:#FFCCCC; padding:15px; border-radius:12px; text-align:center;">
             <h4>Diabetes</h4>
@@ -171,8 +171,7 @@ with tab2:
             <p>{diabetes_count} casos</p>
         </div>
         """, unsafe_allow_html=True)
-
-
+    
     # Prediabetes
     with col2:
         prediabetes_count = (filtered_df["Diagnóstico médico de prediabetes"] == "Sí").sum()
@@ -184,8 +183,8 @@ with tab2:
             <p>{prediabetes_count} casos</p>
         </div>
         """, unsafe_allow_html=True)
-
-    # Insulina
+    
+    # Uso de insulina
     with col3:
         insulina_count = (filtered_df["Uso actual de insulina"] == "Sí").sum()
         insulina_prev = (insulina_count / total) * 100
@@ -196,8 +195,8 @@ with tab2:
             <p>{insulina_count} casos</p>
         </div>
         """, unsafe_allow_html=True)
-
-    # Controlada (HbA1c < 7)
+    
+    # Diabetes controlada (HbA1c < 7)
     with col4:
         controlada_count = (filtered_df["Hemoglobina HbA1c (%) "] < 7).sum()
         controlada_prev = (controlada_count / total) * 100
@@ -208,8 +207,6 @@ with tab2:
             <p>{controlada_count} pacientes controlados</p>
         </div>
         """, unsafe_allow_html=True)
-
-        
 
     st.subheader("📊 Análisis interactivo de variables vs Diabetes")
 
