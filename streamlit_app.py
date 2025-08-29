@@ -30,6 +30,22 @@ st.title("NHANES DIABETES Dashboard (2021-2023)")
 # === Cargar base ===
 df = pd.read_csv("nhanes_limpio.csv")
 
+# -----------------------------
+# Tabla de frecuencia
+# -----------------------------
+frecuencia = df['Diagnóstico médico de diabetes'].value_counts()
+frecuencia_relativa = df['Diagnóstico médico de diabetes'].value_counts(normalize=True) * 100
+
+tabla_frecuencia = pd.DataFrame({
+    'Frecuencia': frecuencia,
+    'Porcentaje (%)': frecuencia_relativa
+})
+
+# Mostrar tabla en Streamlit
+st.subheader("Tabla de frecuencia de diabetes")
+st.dataframe(tabla_frecuencia)
+
+
 # === Sidebar Filtros ===
 # === Filtros en sidebar ===
 st.sidebar.header("🔎 Filtros")
