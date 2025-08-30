@@ -182,26 +182,21 @@ with tab2:
     # Evitar dividir por 0
     if total_pacientes > 0:
         # Diabetes
-        casos_diabetes = filtered_df["Diagnóstico médico de diabetes"].fillna("No").eq("Sí").sum()
+        casos_diabetes = filtered_df["Diagnóstico médico de diabetes"].eq("Sí").sum()
         prevalencia_diabetes = (casos_diabetes / total_pacientes) * 100
     
         # Prediabetes
-        casos_prediabetes = filtered_df["Diagnóstico médico de prediabetes"].fillna("No").eq("Sí").sum()
+        casos_prediabetes = filtered_df["Diagnóstico médico de prediabetes"].eq("Sí").sum()
         prevalencia_prediabetes = (casos_prediabetes / total_pacientes) * 100
     
         # Uso de insulina
-        casos_insulina = filtered_df["Uso actual de insulina"].fillna("No").eq("Sí").sum()
+        casos_insulina = filtered_df["Uso actual de insulina"].eq("Sí").sum()
         prevalencia_insulina = (casos_insulina / total_pacientes) * 100
     else:
         casos_diabetes = casos_prediabetes = casos_insulina = 0
         prevalencia_diabetes = prevalencia_prediabetes = prevalencia_insulina = 0
     
-    # ============================
-    # Mostrar resultados en Streamlit
-    # ============================
-    st.write(f"Prevalencia diabetes: {prevalencia_diabetes:.2f}% ({casos_diabetes}/{total_pacientes} casos)")
-    st.write(f"Prevalencia prediabetes: {prevalencia_prediabetes:.2f}% ({casos_prediabetes}/{total_pacientes} casos)")
-    st.write(f"Prevalencia uso de insulina: {prevalencia_insulina:.2f}% ({casos_insulina}/{total_pacientes} casos)")
+
     
     # ============================
     # Métricas en columnas
