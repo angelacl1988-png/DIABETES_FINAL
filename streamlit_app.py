@@ -555,183 +555,124 @@ with tab3:
         else:
             st.warning("⚠️ Aún no has corrido el bloque PCA para generar DF_PCA_final.")
 
+
+    
 # ======================================================
-# TAB 4: Selección de Variables y Comparación de Métodos
+# TAB 4: Selección de Variables
 # ======================================================
 with tab4:
-        # ----------------------------
-        # Preparar datos
-        # ----------------------------
-        T#Parámetros + preparación
-    # ===== Config =====
-    TARGET_COLS = ["Diagnóstico médico de diabetes", "Diagnóstico de diabetes (Sí/No)", "Diagnóstico de diabetes (Original)"]
-    TARGET_COL  = "Diagnóstico médico de diabetes"   # la que usarás como y
-    ID_COLS = ["SEQN"]
-    UMBRAL_ACUM = 0.80                 # 80%
-    RANDOM_STATE = 42
-    
-    # 1) Construir X e y SIN ninguna columna objetivo
-    df = df.dropna(subset=[TARGET_COL]).copy()
-    
-    drop_cols = set(ID_COLS) | set(TARGET_COLS)
-    
-    # Separar columnas por tipo según DF previos
-    num_cols = [c for c in df.select_dtypes(include=["int64","float64","int32","float32"]).columns
-                if c not in drop_cols]
-    cat_cols = [c for c in df.select_dtypes(include=["object","category","bool"]).columns
-                if c not in drop_cols]
-    
-    X = df[num_cols + cat_cols].copy()
-    y = df[TARGET_COL].map({"No":0, "Sí":1}).astype(int)
+    st.title("Selección de Variables: Random Forest vs L1 Logistic Regression")
 
-        # Preprocesador + helper de nombres
+    # Parámetros
+    UMBRAL_ACUM = 0.80
+    RANDOM_STATE = 42
+    TARGET_COL = "Diagnóstico médico de diabetes"
+    ID_COLS = ["SEQN"]
+
+    # --- Preparar X e y ---
+    df_sel = df.dropna(subset=[TARGET_COL]).copy()
+    drop_cols = set(ID_COLS) | set([TARGET_COL])
+    num_cols = [c for c in df_sel.select_dtypes(include=["int64","float64"]).columns if c not in drop_cols]
+    cat_cols = [c for c in df_sel.select_dtypes(include=["object","category","bool"]).columns if c not in drop_cols]
+
+    X = df_sel[num_cols + cat_cols].copy()
+    y = df_sel[TARGET_COL].map({"No":0, "Sí":1}).astype(int)
+
+    # Función para preprocesador
     def build_preprocessor(num_cols, cat_cols, scale_numeric=True):
         num_steps = [("imputer", SimpleImputer(strategy="median"))]
         if scale_numeric:
             num_steps.append(("scaler", StandardScaler()))
         num_pipe = Pipeline(num_steps)
-    
-        # compatibilidad: sparse_output (>=1.2) vs sparse (<=1.1)
-        ohe_kwargs = {"handle_unknown": "ignore", "drop": None}
-        try:
-            OneHotEncoder(sparse_output=False)
-            ohe_kwargs["sparse_output"] = False
-        except TypeError:
-            ohe_kwargs["sparse"] = False
-    
+
+        ohe_kwargs = {"handle_unknown": "ignore", "sparse_output": False}
         cat_pipe = Pipeline([
             ("imputer", SimpleImputer(strategy="most_frequent")),
             ("oh", OneHotEncoder(**ohe_kwargs))
         ])
-    
+
         return ColumnTransformer([
             ("num", num_pipe, num_cols),
             ("cat", cat_pipe, cat_cols)
         ])
-    
+
+    # Función para obtener nombres de variables después del preprocesamiento
     def get_feature_names(pre, num_cols, cat_cols):
         names = list(num_cols)
         oh = pre.named_transformers_["cat"].named_steps["oh"]
         names += oh.get_feature_names_out(cat_cols).tolist()
         return names
-    
+
     def base_col(name):
         for c in cat_cols:
-            if name.startswith(c + "_"): return c
+            if name.startswith(c + "_"):
+                return c
         return name
 
-        # ----------------------------
-        # RandomForest
-        # ----------------------------
-        
-        # ----------------------------
-        # LASSO
-        # ----------------------------
-        scaler = StandardScaler()
-        X_train_scaled = scaler.fit_transform(X_train)
-        X_test_scaled = scaler.transform(X_test)
+    # ======================================================
+    # Random Forest
+    # ======================================================
+    pre_rf = build_preprocessor(num_cols, cat_cols, scale_numeric=False)
+    rf = RandomForestClassifier(n_estimators=400, random_state=RANDOM_STATE, n_jobs=-1)
+    pipe_rf = Pipeline([("pre", pre_rf), ("rf", rf)]).fit(X, y)
 
-        lasso = LogisticRegression(
-            penalty="l1", solver="liblinear", max_iter=2000, random_state=42
-        )
-        lasso.fit(X_train_scaled, y_train)
-        y_pred_lasso = lasso.predict_proba(X_test_scaled)[:, 1]
+    feat_names_rf = get_feature_names(pipe_rf.named_steps["pre"], num_cols, cat_cols)
+    importances = pipe_rf.named_steps["rf"].feature_importances_
 
-        fpr_lasso, tpr_lasso, _ = roc_curve(y_test, y_pred_lasso)
-        auc_lasso = auc(fpr_lasso, tpr_lasso)
+    df_imp_rf = pd.DataFrame({"feature": feat_names_rf, "importance": importances})
+    df_imp_rf = df_imp_rf.sort_values("importance", ascending=False).reset_index(drop=True)
+    df_imp_rf["cum_importance"] = df_imp_rf["importance"].cumsum() / df_imp_rf["importance"].sum()
 
-        import_lasso = pd.DataFrame({
-            "Variable": X.columns,
-            "Importancia": np.abs(lasso.coef_[0]),
-            "Método": "LASSO"
-        }).sort_values("Importancia", ascending=False)
+    sel_rf_feats = df_imp_rf.loc[df_imp_rf["cum_importance"] <= UMBRAL_ACUM, "feature"].tolist()
+    orig_sel_rf = sorted(pd.unique([base_col(f) for f in sel_rf_feats]))
+    DF_sel_RF = df_sel[[c for c in ID_COLS if c in df_sel.columns] + [TARGET_COL] + orig_sel_rf]
+    DF_sel_RF.to_csv("tarea2_variables_seleccionadas_RF.csv", index=False)
 
-        # ----------------------------
-        # Curva ROC
-        # ----------------------------
-        fig_roc = go.Figure()
-        fig_roc.add_trace(go.Scatter(x=fpr_rf, y=tpr_rf, mode="lines",
-                                     name=f"RandomForest (AUC={auc_rf:.3f})"))
-        fig_roc.add_trace(go.Scatter(x=fpr_lasso, y=tpr_lasso, mode="lines",
-                                     name=f"LASSO (AUC={auc_lasso:.3f})"))
-        fig_roc.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode="lines",
-                                     line=dict(dash="dash", color="gray"), showlegend=False))
-        fig_roc.update_layout(title="Curva ROC: RandomForest vs LASSO",
-                              xaxis_title="1 - Especificidad (FPR)",
-                              yaxis_title="Sensibilidad (TPR)",
-                              template="plotly_white")
-        st.plotly_chart(fig_roc, use_container_width=True)
+    st.subheader("Random Forest: Variables seleccionadas")
+    st.dataframe(df_imp_rf.head(20))
+    st.success(f"[RF] {len(orig_sel_rf)} variables seleccionadas → tarea2_variables_seleccionadas_RF.csv")
 
-        # ----------------------------
-        # Sliders para umbral de selección
-        # ----------------------------
-        st.subheader("⚙️ Ajuste de Umbrales de Selección")
-        umbral_rf = st.slider("Percentil de importancia mínima (RandomForest)", 
-                              0.0, 1.0, 0.75, 0.05)
-        umbral_lasso = st.slider("Coeficiente mínimo absoluto (LASSO)", 
-                                 0.0, 0.5, 0.01, 0.01)
+    # ======================================================
+    # L1 Logistic Regression
+    # ======================================================
+    pre_l1 = build_preprocessor(num_cols, cat_cols, scale_numeric=True)
+    log_l1 = LogisticRegression(penalty="l1", solver="saga", C=1.0, max_iter=4000, n_jobs=-1, random_state=RANDOM_STATE)
+    pipe_l1 = Pipeline([("pre", pre_l1), ("clf", log_l1)]).fit(X, y)
 
-        # Selección según umbral
-        # (calcular percentil ANTES de filtrar)
-        valor_umbral_rf = import_rf["Importancia"].quantile(umbral_rf)
-        selected_rf = import_rf[import_rf["Importancia"] >= valor_umbral_rf]["Variable"].tolist()
-        selected_lasso = import_lasso[import_lasso["Importancia"] > umbral_lasso]["Variable"].tolist()
+    feat_names_l1 = get_feature_names(pipe_l1.named_steps["pre"], num_cols, cat_cols)
+    coefs = np.abs(pipe_l1.named_steps["clf"].coef_).ravel()
 
-        n_rf = len(selected_rf)
-        n_lasso = len(selected_lasso)
+    df_imp_l1 = pd.DataFrame({"feature": feat_names_l1, "importance": coefs})
+    df_imp_l1 = df_imp_l1.sort_values("importance", ascending=False).reset_index(drop=True)
+    df_imp_l1["cum_importance"] = df_imp_l1["importance"].cumsum() / df_imp_l1["importance"].sum()
 
-        st.subheader("📌 Resumen de Variables")
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Variables Totales", total_vars)
-        col2.metric("Variables seleccionadas RF", n_rf)
-        col3.metric("Variables seleccionadas LASSO", n_lasso)
+    sel_l1_feats = df_imp_l1.loc[df_imp_l1["cum_importance"] <= UMBRAL_ACUM, "feature"].tolist()
+    orig_sel_l1 = sorted(pd.unique([base_col(f) for f in sel_l1_feats]))
+    DF_sel_L1 = df_sel[[c for c in ID_COLS if c in df_sel.columns] + [TARGET_COL] + orig_sel_l1]
+    DF_sel_L1.to_csv("tarea2_variables_seleccionadas_L1.csv", index=False)
 
-        ganador = "RandomForest" if auc_rf >= auc_lasso else "LASSO"
-        st.success(f"🏆 El método ganador según AUC es: **{ganador}**")
+    st.subheader("L1 Logistic Regression: Variables seleccionadas")
+    st.dataframe(df_imp_l1.head(20))
+    st.success(f"[L1] {len(orig_sel_l1)} variables seleccionadas → tarea2_variables_seleccionadas_L1.csv")
 
-        # ----------------------------
-        # Slider para número de variables a mostrar
-        # ----------------------------
-        top_n = st.slider("Número de variables a mostrar en los gráficos", 
-                          min_value=5, max_value=30, value=15, step=1)
+    # ======================================================
+    # Comparación de métodos (top 20 variables)
+    # ======================================================
+    import plotly.express as px
+    df_top_rf = df_imp_rf.head(20).copy(); df_top_rf["Método"] = "RF"
+    df_top_l1 = df_imp_l1.head(20).copy(); df_top_l1["Método"] = "L1"
+    df_plot = pd.concat([df_top_rf, df_top_l1], axis=0)
 
-        # ----------------------------
-        # Gráfico individual RF
-        # ----------------------------
-        fig_rf = px.bar(
-            import_rf.head(top_n),
-            x="Importancia", y="Variable", orientation="h",
-            title=f"RandomForest - Importancia de Variables (Top {top_n})", color="Importancia"
-        )
-        fig_rf.update_layout(yaxis={"categoryorder": "total ascending"})
-        st.plotly_chart(fig_rf, use_container_width=True)
-
-        # ----------------------------
-        # Gráfico individual LASSO
-        # ----------------------------
-        fig_lasso = px.bar(
-            import_lasso.head(top_n),
-            x="Importancia", y="Variable", orientation="h",
-            title=f"LASSO - Importancia de Variables (Top {top_n})", color="Importancia"
-        )
-        fig_lasso.update_layout(yaxis={"categoryorder": "total ascending"})
-        st.plotly_chart(fig_lasso, use_container_width=True)
-
-        # ----------------------------
-        # Dataset reducido con el método ganador
-        # ----------------------------
-        st.subheader("💾 Dataset reducido con variables seleccionadas")
-
-        if ganador == "RandomForest":
-            selected_vars = selected_rf
-        else:
-            selected_vars = selected_lasso
-
-        df_reducido = pd.concat([df_model[[TARGET_COL]].reset_index(drop=True),
-                                 X[selected_vars].reset_index(drop=True)], axis=1)
-
-        st.write(f"El dataset reducido contiene **{df_reducido.shape[1]-1} variables** + la variable objetivo")
-        st.dataframe(df_reducido.head(10))  # muestra primeras 20 filas
+    fig = px.bar(
+        df_plot.sort_values("importance", ascending=True),
+        x="importance",
+        y="feature",
+        color="Método",
+        orientation="h",
+        barmode="group",
+        title="Top 20 variables según Random Forest vs L1 Logistic"
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
 # ======================================================
 # TAB 5: Comparación PCA vs RandomForest
