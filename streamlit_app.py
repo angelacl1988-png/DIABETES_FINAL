@@ -555,50 +555,35 @@ with tab3:
         else:
             st.warning("⚠️ Aún no has corrido el bloque PCA para generar DF_PCA_final.")
 
-
-## ------------------------------------------------
-# TAB 4: Selección de Variables (con NHANES)
-# ------------------------------------------------
+# ================================================
+# TAB 4 - Selección de variables
+# ================================================
 with tab4:
-    st.header("⚙️ Selección de Variables (NHANES)")
+    st.header("🔎 Selección de Variables")
 
-    st.markdown("""
-    En esta sección se aplican **tres enfoques diferentes de selección de variables** usando el dataset NHANES filtrado, 
-    con la variable objetivo **Diagnóstico médico de diabetes**:
-    
-    1. **Filtrado (SelectKBest con Chi²)**  
-    2. **Incrustado (Random Forest feature_importances_)**  
-    3. **Envoltura (RFECV con Logistic Regression)**  
-    """)
+    # --- Preprocesamiento ---
+    TARGET_COL = "Diagnóstico médico de diabetes"
+    vars_excluir = ["SEQN", "Diagnóstico médico de prediabetes", "Uso actual de insulina"]
 
-    from sklearn.feature_selection import SelectKBest, chi2, RFECV
-    from sklearn.ensemble import RandomForestClassifier
-    from sklearn.linear_model import LogisticRegression
+    # Solo predictores
+    X = df.drop(columns=vars_excluir + [TARGET_COL], errors="ignore")
+    y = df[TARGET_COL].map({"Sí": 1, "No": 0})  # convertir a binario
 
-    # --- Preparar datos ---
-    df_model = df.copy()
+    # --- Asegurar numéricas para filtrado y regresión ---
+    X_num = X.select_dtypes(include=[np.number]).copy()
+    X_num = X_num.fillna(X_num.median())  # imputación rápida
 
-    # Variable objetivo
-    target = "Diagnóstico médico de diabetes"
+    # ============================
+    # 1. Filtrado (SelectKBest - Chi2)
+    # ============================
+    from sklearn.feature_selection import SelectKBest, chi2
 
-    # Eliminar filas con nulos en la variable objetivo
-    df_model = df_model[df_model[target].notnull()]
-
-    # Convertir target a binario (Sí=1, No=0)
-    y = df_model[target].apply(lambda x: 1 if x == "Sí" else 0)
-
-    # Selección de variables predictoras (excluimos identificadores y target)
-    X = df_model.drop(columns=[target, "SEQN"], errors="ignore")
-
-    # Codificar variables categóricas
-    X = pd.get_dummies(X, drop_first=True)
-
-    features = X.columns
-
-    # --- 1. Selección por filtrado (Chi²) ---
     selector = SelectKBest(score_func=chi2, k="all")
-    selector.fit(X.abs(), y)
+    selector.fit(X_num.abs(), y)  # abs porque chi2 no acepta negativos
+
     scores_filter = selector.scores_
+    features = X_num.columns
+
     indices_filter = np.argsort(scores_filter)[::-1]
     sorted_scores_filter = scores_filter[indices_filter]
     sorted_features_filter = features[indices_filter]
@@ -607,9 +592,14 @@ with tab4:
     cutoff_filter = np.searchsorted(cumulative_filter, 0.90) + 1
     selected_filter = sorted_features_filter[:cutoff_filter]
 
-    # --- 2. Incrustado (Random Forest) ---
-    rf = RandomForestClassifier(n_estimators=200, random_state=42)
-    rf.fit(X, y)
+    # ============================
+    # 2. Incrustado (Random Forest)
+    # ============================
+    from sklearn.ensemble import RandomForestClassifier
+
+    rf = RandomForestClassifier(n_estimators=100, random_state=42)
+    rf.fit(X_num, y)
+
     importances_embedded = rf.feature_importances_
     indices_embedded = np.argsort(importances_embedded)[::-1]
     sorted_importances_embedded = importances_embedded[indices_embedded]
@@ -619,65 +609,77 @@ with tab4:
     cutoff_embedded = np.searchsorted(cumulative_embedded, 0.90) + 1
     selected_embedded = sorted_features_embedded[:cutoff_embedded]
 
-    # --- 3. Envoltura (RFECV con LogisticRegression) ---
+    # ============================
+    # 3. Envoltura (RFECV con LogisticRegression)
+    # ============================
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.feature_selection import RFECV
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import Pipeline
+
     scaler = StandardScaler()
-    model = LogisticRegression(max_iter=1000, solver="liblinear")
+    model = LogisticRegression(max_iter=1000)
+
     rfecv = RFECV(estimator=model, step=1, cv=5, scoring="accuracy")
     pipeline = Pipeline([("scaler", scaler), ("feature_selection", rfecv)])
-    pipeline.fit(X, y)
+    pipeline.fit(X_num, y)
 
-    selected_wrap = X.columns[rfecv.support_]
+    selected_wrap = X_num.columns[rfecv.support_]
     coefs = rfecv.estimator_.coef_.flatten()
+
     indices_wrap = np.argsort(np.abs(coefs))[::-1]
     abs_coefs_sorted = np.abs(coefs)[indices_wrap]
     cumulative_wrap = np.cumsum(abs_coefs_sorted) / np.sum(abs_coefs_sorted)
     cutoff_wrap = np.searchsorted(cumulative_wrap, 0.90) + 1
     selected_wrap_90 = selected_wrap[indices_wrap][:cutoff_wrap]
 
-    # --- Mostrar resultados ---
-    st.subheader("📌 Número de variables necesarias para explicar el 90% de la importancia")
-    st.write(f"**Filtrado (Chi²):** {cutoff_filter} variables")
-    st.write(f"**Incrustado (Random Forest):** {cutoff_embedded} variables")
-    st.write(f"**Envoltura (RFECV):** {cutoff_wrap} variables")
+    # ============================
+    # Mostrar resultados en Streamlit
+    # ============================
+    st.subheader("📌 Número de variables necesarias para cubrir el 90% de la importancia")
+    st.write(f"- Filtrado (Chi2): **{cutoff_filter}** variables")
+    st.write(f"- Incrustado (Random Forest): **{cutoff_embedded}** variables")
+    st.write(f"- Envoltura (RFECV): **{cutoff_wrap}** variables")
 
-    st.subheader("📌 Variables seleccionadas (90% acumulado)")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.write("**Filtrado:**")
-        st.write(selected_filter.tolist())
-    with col2:
-        st.write("**Incrustado:**")
-        st.write(selected_embedded.tolist())
-    with col3:
-        st.write("**Envoltura:**")
-        st.write(selected_wrap_90.tolist())
+    st.subheader("🔹 Variables seleccionadas por cada método")
+    st.write("**Filtrado (Chi2):**", selected_filter.tolist())
+    st.write("**Incrustado (Random Forest):**", selected_embedded.tolist())
+    st.write("**Envoltura (RFECV):**", selected_wrap_90.tolist())
 
-    # --- Gráficas comparativas ---
-    st.subheader("📊 Comparación de métodos de selección")
+    # ============================
+    # Gráficas comparativas
+    # ============================
+    import matplotlib.pyplot as plt
+
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
+    # Filtrado
     axes[0].bar(range(len(sorted_scores_filter)), sorted_scores_filter, color="skyblue")
+    axes[0].axvline(cutoff_filter - 1, color="red", linestyle="--", label="90% acumulado")
     axes[0].set_xticks(range(len(sorted_features_filter)))
     axes[0].set_xticklabels(sorted_features_filter, rotation=90)
-    axes[0].set_title("Filtrado (Chi²)")
-    axes[0].axvline(cutoff_filter-1, color="red", linestyle="--", label="90% acumulado")
+    axes[0].set_title("Filtrado (Chi2)")
     axes[0].legend()
 
+    # Incrustado
     axes[1].bar(range(len(sorted_importances_embedded)), sorted_importances_embedded, color="lightgreen")
+    axes[1].axvline(cutoff_embedded - 1, color="red", linestyle="--", label="90% acumulado")
     axes[1].set_xticks(range(len(sorted_features_embedded)))
     axes[1].set_xticklabels(sorted_features_embedded, rotation=90)
     axes[1].set_title("Incrustado (Random Forest)")
-    axes[1].axvline(cutoff_embedded-1, color="red", linestyle="--", label="90% acumulado")
     axes[1].legend()
 
+    # Envoltura
     axes[2].bar(range(len(abs_coefs_sorted)), abs_coefs_sorted, color="salmon")
+    axes[2].axvline(cutoff_wrap - 1, color="red", linestyle="--", label="90% acumulado")
     axes[2].set_xticks(range(len(selected_wrap)))
     axes[2].set_xticklabels(selected_wrap[indices_wrap], rotation=90)
-    axes[2].set_title("Envoltura (RFECV coef)")
-    axes[2].axvline(cutoff_wrap-1, color="red", linestyle="--", label="90% acumulado")
+    axes[2].set_title("Envoltura (RFECV)")
     axes[2].legend()
 
+    plt.tight_layout()
     st.pyplot(fig)
+
 
 
 
