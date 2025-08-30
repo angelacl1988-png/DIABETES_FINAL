@@ -682,3 +682,111 @@ with tab4:
     st.write("### 📌 Variables seleccionadas por cada método")
     for method, features in methods.items():
         st.markdown(f"**{method}** ({len(features)} variables): {', '.join(features)}")
+
+# ------------------------------------------------
+# TAB 4: Selección de Variables
+# ------------------------------------------------
+with tab5:
+
+    st.subheader("🔎 Selección de Variables y Comparación de Métodos")
+
+    from sklearn.feature_selection import SelectKBest, chi2, RFECV
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.model_selection import train_test_split, StratifiedKFold
+    from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
+    import plotly.express as px
+
+    # --- Separar X y y ---
+    X = filtered_df.drop(columns=["Diagnóstico médico de diabetes"], errors="ignore")
+    y = filtered_df["Diagnóstico médico de diabetes"].apply(lambda x: 1 if x == "Sí" else 0)
+
+    # Variables numéricas (para chi2 requieren no negativos)
+    X_num = X.select_dtypes(include=[np.number]).fillna(0).abs()
+
+    # Train/Test split
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_num, y, test_size=0.3, random_state=42, stratify=y
+    )
+
+    # --------------------
+    # 1. Método Filtrado (Chi2)
+    # --------------------
+    k = min(10, X_train.shape[1])  # Seleccionar hasta 10 o el total
+    chi_selector = SelectKBest(chi2, k=k)
+    chi_selector.fit(X_train, y_train)
+    chi_support = chi_selector.get_support()
+    chi_features = X_train.columns[chi_support].tolist()
+
+    # --------------------
+    # 2. Método Incrustado (RandomForest)
+    # --------------------
+    rf = RandomForestClassifier(random_state=42)
+    rf.fit(X_train, y_train)
+    rf_importances = pd.Series(rf.feature_importances_, index=X_train.columns)
+    rf_features = rf_importances.nlargest(k).index.tolist()
+
+    # --------------------
+    # 3. Método Envoltura (RFECV con LogisticRegression)
+    # --------------------
+    logreg = LogisticRegression(max_iter=500, solver="liblinear")
+    rfecv = RFECV(
+        estimator=logreg,
+        step=1,
+        cv=StratifiedKFold(5),
+        scoring="accuracy"
+    )
+    rfecv.fit(X_train, y_train)
+    rfecv_features = X_train.columns[rfecv.support_].tolist()
+
+    # --------------------
+    # Evaluar cada conjunto de variables con el mismo modelo base
+    # --------------------
+    results = []
+    methods = {
+        "Filtrado (Chi2)": chi_features,
+        "Incrustado (RandomForest)": rf_features,
+        "Envoltura (RFECV)": rfecv_features,
+    }
+
+    for method, features in methods.items():
+        model = LogisticRegression(max_iter=500, solver="liblinear")
+        model.fit(X_train[features], y_train)
+        y_pred = model.predict(X_test[features])
+        y_prob = model.predict_proba(X_test[features])[:, 1]
+
+        results.append({
+            "Método": method,
+            "Accuracy": accuracy_score(y_test, y_pred),
+            "F1-score": f1_score(y_test, y_pred),
+            "AUC": roc_auc_score(y_test, y_prob),
+            "Variables Seleccionadas": len(features)
+        })
+
+    results_df = pd.DataFrame(results)
+
+    # Mostrar tabla
+    st.write("### 📊 Comparación de métodos")
+    st.dataframe(results_df.style.format({
+        "Accuracy": "{:.3f}",
+        "F1-score": "{:.3f}",
+        "AUC": "{:.3f}"
+    }))
+
+    # Gráfico comparativo
+    fig = px.bar(
+        results_df.melt(id_vars=["Método", "Variables Seleccionadas"],
+                        value_vars=["Accuracy", "F1-score", "AUC"],
+                        var_name="Métrica", value_name="Valor"),
+        x="Métrica", y="Valor", color="Método", barmode="group",
+        text=results_df.melt(id_vars=["Método", "Variables Seleccionadas"],
+                             value_vars=["Accuracy", "F1-score", "AUC"])["Valor"].round(3)
+    )
+    fig.update_traces(textposition="outside")
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Mostrar features de cada método
+    st.write("### 📌 Variables seleccionadas por cada método")
+    for method, features in methods.items():
+        st.markdown(f"**{method}** ({len(features)} variables): {', '.join(features)}")
+
