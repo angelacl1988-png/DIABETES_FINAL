@@ -173,6 +173,9 @@ with tab2:
     # Cálculo de prevalencias
     # ============================
      # Total de pacientes
+    import streamlit as st
+
+    # Total de pacientes
     total_pacientes = len(filtered_df)
     
     # Diabetes
@@ -187,10 +190,11 @@ with tab2:
     casos_insulina = (filtered_df["Uso actual de insulina"] == "Sí").sum()
     prevalencia_insulina = (casos_insulina / total_pacientes) * 100
     
-    # Mostrar resultados
-    print(f"Prevalencia diabetes: {prevalencia_diabetes:.2f}%")
-    print(f"Prevalencia prediabetes: {prevalencia_prediabetes:.2f}%")
-    print(f"Prevalencia uso de insulina: {prevalencia_insulina:.2f}%")
+    # Mostrar resultados en Streamlit
+    st.write(f"Prevalencia diabetes: {prevalencia_diabetes:.2f}% ({casos_diabetes}/{total_pacientes} casos)")
+    st.write(f"Prevalencia prediabetes: {prevalencia_prediabetes:.2f}% ({casos_prediabetes}/{total_pacientes} casos)")
+    st.write(f"Prevalencia uso de insulina: {prevalencia_insulina:.2f}% ({casos_insulina}/{total_pacientes} casos)")
+
 
     # ============================
     # Métricas en columnas
