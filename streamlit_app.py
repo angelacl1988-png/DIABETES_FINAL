@@ -590,25 +590,31 @@ with tab4:
 
     ### Selección de variables y cobertura del 90% de la importancia
 
-En el análisis de selección de características se aplicaron tres técnicas de selección para identificar las variables más relevantes en la predicción:
+import streamlit as st
 
-1. **Filtrado (Chi²)**  
-   - Este método evalúa la **asociación estadística** entre cada variable independiente y la variable objetivo de manera individual.  
-   - Se seleccionan las variables que muestran mayor dependencia con la salida.  
-   - En este caso, **solo 4 variables** fueron necesarias para cubrir el **90% de la importancia acumulada**.  
-   - ➡️ Indica que unas pocas variables tienen un peso muy fuerte en la relación con el desenlace.
+    st.markdown("""
+    ### Selección de variables y cobertura del 90% de la importancia
+    
+    En el análisis de selección de características se aplicaron tres enfoques diferentes para identificar las variables más relevantes en la predicción:
+    
+    1. **Filtrado (Chi²)**  
+       - Evalúa la **asociación estadística** entre cada variable independiente y la variable objetivo de manera individual.  
+       - Se seleccionan las variables que muestran mayor dependencia con la salida.  
+       - En este caso, **solo 4 variables** fueron necesarias para cubrir el **90% de la importancia acumulada**.  
+       - ➡️ Indica que unas pocas variables tienen un peso muy fuerte en la relación con el desenlace.
+    
+    2. **Incrustado (Random Forest)**  
+       - Utiliza modelos de aprendizaje automático (árboles de decisión en este caso) que asignan una **importancia** a cada variable durante el entrenamiento.  
+       - Este método considera **interacciones** entre variables y relaciones no lineales.  
+       - Se necesitaron **25 variables** para cubrir el **90% de la importancia**, lo cual refleja que el modelo distribuye la relevancia entre un mayor número de predictores.
+    
+    3. **Envoltura (RFECV – Recursive Feature Elimination con validación cruzada)**  
+       - Evalúa conjuntos de variables de forma iterativa, eliminando las menos relevantes en cada paso.  
+       - Utiliza validación cruzada para garantizar que las variables seleccionadas realmente contribuyen a mejorar el rendimiento del modelo.  
+       - Aquí fueron necesarias **18 variables** para alcanzar el **90% de la importancia acumulada**.  
+     
+    """)
 
-2. **Incrustado (Random Forest)**  
-   - Utiliza modelos de aprendizaje automático (árboles de decisión en este caso) que asignan una **importancia** a cada variable durante el entrenamiento.  
-   - Este método considera **interacciones** entre variables y relaciones no lineales.  
-   - Se necesitaron **25 variables** para cubrir el **90% de la importancia**, lo cual refleja que el modelo distribuye la relevancia entre un mayor número de predictores.
-
-3. **Envoltura (RFECV – Recursive Feature Elimination con validación cruzada)**  
-   - Evalúa conjuntos de variables de forma iterativa, eliminando las menos relevantes en cada paso.  
-   - Utiliza validación cruzada para garantizar que las variables seleccionadas realmente contribuyen a mejorar el rendimiento del modelo.  
-   - Aquí fueron necesarias **18 variables** para alcanzar el **90% de la importancia acumulada**.  
-
----
 
 ✅ **Interpretación global:**  
 - El método **Chi² (filtrado)** es más restrictivo, seleccionando muy pocas variables clave.  
@@ -834,8 +840,18 @@ La elección final del conjunto de variables dependerá del **objetivo del estud
     st.plotly_chart(fig_roc)
 
 
-
-
+        st.markdown("""
+    
+    ✅ **Interpretación global:**  
+    - El método **Chi² (filtrado)** es más restrictivo, seleccionando muy pocas variables clave.  
+    - El método **Random Forest (incrustado)** considera interacciones complejas y requiere más variables.  
+    - El **RFECV (envoltura)** busca un equilibrio entre simplicidad y rendimiento del modelo.  
+    
+    La elección final del conjunto de variables dependerá del **objetivo del estudio**:  
+    - Si se busca **simplicidad y explicabilidad**, conviene usar un método filtrado.  
+    - Si se prioriza **precisión predictiva**, los métodos incrustados o de envoltura suelen ser más adecuados.  
+    """)
+    
 
 
 
