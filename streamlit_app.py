@@ -299,6 +299,9 @@ with tab3:
         missing_frac = X_num.isna().mean()
         X_num = X_num.loc[:, missing_frac <= 0.8]
 
+           # === Información de la base ===
+        st.info(f"📌 La base de datos tiene **{X_num.shape[1]} variables** y **{X_num.shape[0]} registros**.")
+
         # Preprocesamiento
         num_pipe = Pipeline([
             ("imputer", SimpleImputer(strategy="median")),
