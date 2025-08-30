@@ -448,11 +448,8 @@ with tab3:
     with tab_mca:
            
         # Selección y limpieza de categóricas
-        vars_excluir = ["SEQN", "Diagnóstico médico de diabetes", 
-                        "Diagnóstico médico de prediabetes", "Uso actual de insulina"]
-        X = df.drop(columns=vars_excluir, errors="ignore")
+       
         X_cat = X.select_dtypes(exclude=[np.number])
-        X_cat = X_cat.fillna("Missing").astype(str)
 
         # Matriz disyuntiva (todas las categorías)
         X_disc = pd.get_dummies(X_cat, drop_first=False)
