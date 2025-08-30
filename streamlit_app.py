@@ -33,7 +33,7 @@ df = pd.read_csv("nhanes_limpio.csv")
 
 # === Sidebar Filtros ===
 # === Filtros en sidebar ===
-st.sidebar.header("🔎 Filtros(solo ejecuta para los indicadores iniciales")
+st.sidebar.header("🔎 Filtros para los indicadores iniciales")
 
 # Edad
 min_age, max_age = int(df["Edad en años"].min()), int(df["Edad en años"].max())
