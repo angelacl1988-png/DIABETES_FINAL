@@ -73,7 +73,7 @@ filtered_df = df[
 
 
 # === Pestañas ===
-tab1, tab2, tab3, tab4, tab5, tab6= st.tabs(["Revisión inicial/criterios de selección","🔎 Indicadores iniciales",  "Reducción de dimensiones", "Selección de variables", "Selección de variables1" "Comparación PCA_MCA vs RF"])
+tab1, tab2, tab3, tab4, tab5, tab6= st.tabs(["Revisión inicial/criterios de selección","🔎 Indicadores iniciales",  "Reducción de dimensiones", "Selección de variables", "Selección de variables1", "Comparación PCA_MCA vs RF"])
 
 
 import streamlit as st
