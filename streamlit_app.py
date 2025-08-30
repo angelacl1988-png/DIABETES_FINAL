@@ -206,12 +206,6 @@ with tab2:
         casos_diabetes = casos_prediabetes = casos_insulina = 0
         prevalencia_diabetes = prevalencia_prediabetes = prevalencia_insulina = 0
     
-    # -----------------------
-    # Mostrar resultados en Streamlit
-    # -----------------------
-    st.write(f"Prevalencia de diabetes: {prevalencia_diabetes:.2f}% ({casos_diabetes}/{total_pacientes} casos)")
-    st.write(f"Prevalencia de prediabetes: {prevalencia_prediabetes:.2f}% ({casos_prediabetes}/{total_pacientes} casos)")
-    st.write(f"Prevalencia de uso de insulina: {prevalencia_insulina:.2f}% ({casos_insulina}/{total_pacientes} casos)")
     
     # -----------------------
     # Métricas en columnas
