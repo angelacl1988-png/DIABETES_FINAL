@@ -578,17 +578,16 @@ with tab4:
     X = df_sel[num_cols + cat_cols].copy()
     y = df_sel[TARGET_COL].map({"No":0, "Sí":1}).astype(int)
 
-    # Función para preprocesador
+    # --- Función preprocesador segura ---
     def build_preprocessor(num_cols, cat_cols, scale_numeric=True):
         num_steps = [("imputer", SimpleImputer(strategy="median"))]
         if scale_numeric:
             num_steps.append(("scaler", StandardScaler()))
         num_pipe = Pipeline(num_steps)
 
-        ohe_kwargs = {"handle_unknown": "ignore", "sparse_output": False}
         cat_pipe = Pipeline([
             ("imputer", SimpleImputer(strategy="most_frequent")),
-            ("oh", OneHotEncoder(**ohe_kwargs))
+            ("oh", OneHotEncoder(handle_unknown="ignore"))
         ])
 
         return ColumnTransformer([
@@ -596,7 +595,7 @@ with tab4:
             ("cat", cat_pipe, cat_cols)
         ])
 
-    # Función para obtener nombres de variables después del preprocesamiento
+    # --- Función para obtener nombres de features ---
     def get_feature_names(pre, num_cols, cat_cols):
         names = list(num_cols)
         oh = pre.named_transformers_["cat"].named_steps["oh"]
@@ -613,8 +612,11 @@ with tab4:
     # Random Forest
     # ======================================================
     pre_rf = build_preprocessor(num_cols, cat_cols, scale_numeric=False)
-    rf = RandomForestClassifier(n_estimators=400, random_state=RANDOM_STATE, n_jobs=-1)
-    pipe_rf = Pipeline([("pre", pre_rf), ("rf", rf)]).fit(X, y)
+    pipe_rf = Pipeline([
+        ("pre", pre_rf),
+        ("rf", RandomForestClassifier(n_estimators=400, random_state=RANDOM_STATE, n_jobs=-1))
+    ])
+    pipe_rf.fit(X, y)
 
     feat_names_rf = get_feature_names(pipe_rf.named_steps["pre"], num_cols, cat_cols)
     importances = pipe_rf.named_steps["rf"].feature_importances_
@@ -636,8 +638,11 @@ with tab4:
     # L1 Logistic Regression
     # ======================================================
     pre_l1 = build_preprocessor(num_cols, cat_cols, scale_numeric=True)
-    log_l1 = LogisticRegression(penalty="l1", solver="saga", C=1.0, max_iter=4000, n_jobs=-1, random_state=RANDOM_STATE)
-    pipe_l1 = Pipeline([("pre", pre_l1), ("clf", log_l1)]).fit(X, y)
+    pipe_l1 = Pipeline([
+        ("pre", pre_l1),
+        ("clf", LogisticRegression(penalty="l1", solver="saga", C=1.0, max_iter=4000, n_jobs=-1, random_state=RANDOM_STATE))
+    ])
+    pipe_l1.fit(X, y)
 
     feat_names_l1 = get_feature_names(pipe_l1.named_steps["pre"], num_cols, cat_cols)
     coefs = np.abs(pipe_l1.named_steps["clf"].coef_).ravel()
@@ -656,7 +661,7 @@ with tab4:
     st.success(f"[L1] {len(orig_sel_l1)} variables seleccionadas → tarea2_variables_seleccionadas_L1.csv")
 
     # ======================================================
-    # Comparación de métodos (top 20 variables)
+    # Comparación de métodos (Top 20 variables)
     # ======================================================
     import plotly.express as px
     df_top_rf = df_imp_rf.head(20).copy(); df_top_rf["Método"] = "RF"
@@ -670,7 +675,7 @@ with tab4:
         color="Método",
         orientation="h",
         barmode="group",
-        title="Top 20 variables según Random Forest vs L1 Logistic"
+        title="Top 20 variables según Random Forest vs L1 Logistic Regression"
     )
     st.plotly_chart(fig, use_container_width=True)
 
