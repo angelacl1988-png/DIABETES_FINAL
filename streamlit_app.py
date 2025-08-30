@@ -556,8 +556,7 @@ with tab3:
             st.warning("⚠️ Aún no has corrido el bloque PCA para generar DF_PCA_final.")
 
 
-    
-# ======================================================
+ # ======================================================
 # TAB 4: Selección de Variables
 # ======================================================
 with tab4:
@@ -578,16 +577,28 @@ with tab4:
     X = df_sel[num_cols + cat_cols].copy()
     y = df_sel[TARGET_COL].map({"No":0, "Sí":1}).astype(int)
 
-    # --- Función preprocesador segura ---
+    # --- Función preprocesador segura para todas las versiones de scikit-learn ---
+    import sklearn
+    from sklearn.preprocessing import OneHotEncoder
+
     def build_preprocessor(num_cols, cat_cols, scale_numeric=True):
+        # Pipeline numérico
         num_steps = [("imputer", SimpleImputer(strategy="median"))]
         if scale_numeric:
             num_steps.append(("scaler", StandardScaler()))
         num_pipe = Pipeline(num_steps)
 
+        # Detectar versión y asignar argumento correcto
+        sklearn_ver = tuple(int(x) for x in sklearn.__version__.split('.')[:2])
+        ohe_kwargs = {"handle_unknown": "ignore"}
+        if sklearn_ver >= (1, 2):
+            ohe_kwargs["sparse_output"] = False
+        else:
+            ohe_kwargs["sparse"] = False
+
         cat_pipe = Pipeline([
             ("imputer", SimpleImputer(strategy="most_frequent")),
-            ("oh", OneHotEncoder(handle_unknown="ignore", sparse=False))  # <-- seguro
+            ("oh", OneHotEncoder(**ohe_kwargs))
         ])
 
         return ColumnTransformer([
@@ -678,8 +689,6 @@ with tab4:
         title="Top 20 variables según Random Forest vs L1 Logistic Regression"
     )
     st.plotly_chart(fig, use_container_width=True)
-
-
 
 # ======================================================
 # TAB 5: Comparación PCA vs RandomForest
