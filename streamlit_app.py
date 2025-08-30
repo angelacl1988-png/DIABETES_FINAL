@@ -561,7 +561,6 @@ with tab3:
 # ------------------------------------------------
 with tab4:
 
-    st.header("🔎 Selección de Variables")
 
     # --- Preprocesamiento ---
     TARGET_COL = "Diagnóstico médico de diabetes"
