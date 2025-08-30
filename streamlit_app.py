@@ -73,7 +73,7 @@ filtered_df = df[
 
 
 # === Pestañas ===
-tab1, tab2, tab3, tab4, tab5, tab6= st.tabs(["Revisión inicial/criterios de selección","🔎 Indicadores iniciales",  "Reducción de dimensiones", "Selección de variables", "Selección de variables1", "Comparación PCA_MCA vs RF"])
+tab1, tab2, tab3, tab4= st.tabs(["Revisión inicial/criterios de selección","🔎 Indicadores iniciales",  "Reducción de dimensiones", "Técnicas de selección de variables"])
 
 
 import streamlit as st
@@ -562,7 +562,6 @@ with tab3:
 # ------------------------------------------------
 with tab4:
 
-    st.header("🔎 Selección de Variables")
 
     # --- Preprocesamiento ---
     TARGET_COL = "Diagnóstico médico de diabetes"
@@ -652,36 +651,70 @@ with tab4:
     # ============================
     # Gráficas comparativas
     # ============================
-    import matplotlib.pyplot as plt
+  import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+# Crear subplots: 1 fila, 3 columnas
+fig = make_subplots(rows=1, cols=3, subplot_titles=["Filtrado (Chi2)", "Incrustado (Random Forest)", "Envoltura (RFECV)"])
 
-    # Filtrado
-    axes[0].bar(range(len(sorted_scores_filter)), sorted_scores_filter, color="skyblue")
-    axes[0].axvline(cutoff_filter - 1, color="red", linestyle="--", label="90% acumulado")
-    axes[0].set_xticks(range(len(sorted_features_filter)))
-    axes[0].set_xticklabels(sorted_features_filter, rotation=90)
-    axes[0].set_title("Filtrado (Chi2)")
-    axes[0].legend()
+# --- Filtrado ---
+fig.add_trace(
+    go.Bar(
+        x=sorted_features_filter,
+        y=sorted_scores_filter,
+        marker_color="skyblue",
+        name="Importancia"
+    ),
+    row=1, col=1
+)
+fig.add_vline(
+    x=cutoff_filter - 1,
+    line=dict(color="red", dash="dash"),
+    row=1, col=1
+)
 
-    # Incrustado
-    axes[1].bar(range(len(sorted_importances_embedded)), sorted_importances_embedded, color="lightgreen")
-    axes[1].axvline(cutoff_embedded - 1, color="red", linestyle="--", label="90% acumulado")
-    axes[1].set_xticks(range(len(sorted_features_embedded)))
-    axes[1].set_xticklabels(sorted_features_embedded, rotation=90)
-    axes[1].set_title("Incrustado (Random Forest)")
-    axes[1].legend()
+# --- Incrustado ---
+fig.add_trace(
+    go.Bar(
+        x=sorted_features_embedded,
+        y=sorted_importances_embedded,
+        marker_color="lightgreen",
+        name="Importancia"
+    ),
+    row=1, col=2
+)
+fig.add_vline(
+    x=cutoff_embedded - 1,
+    line=dict(color="red", dash="dash"),
+    row=1, col=2
+)
 
-    # Envoltura
-    axes[2].bar(range(len(abs_coefs_sorted)), abs_coefs_sorted, color="salmon")
-    axes[2].axvline(cutoff_wrap - 1, color="red", linestyle="--", label="90% acumulado")
-    axes[2].set_xticks(range(len(selected_wrap)))
-    axes[2].set_xticklabels(selected_wrap[indices_wrap], rotation=90)
-    axes[2].set_title("Envoltura (RFECV)")
-    axes[2].legend()
+# --- Envoltura ---
+fig.add_trace(
+    go.Bar(
+        x=[selected_wrap[i] for i in indices_wrap],
+        y=abs_coefs_sorted,
+        marker_color="salmon",
+        name="Coeficientes"
+    ),
+    row=1, col=3
+)
+fig.add_vline(
+    x=cutoff_wrap - 1,
+    line=dict(color="red", dash="dash"),
+    row=1, col=3
+)
 
-    plt.tight_layout()
-    st.pyplot(fig)
+# Ajustar diseño
+fig.update_layout(
+    height=500,
+    width=1300,
+    title_text="Comparación de métodos de selección de variables",
+    showlegend=False
+)
+
+st.plotly_chart(fig, use_container_width=True)
+
 
 # ============================
     # Evaluación de modelos según selección de variables
