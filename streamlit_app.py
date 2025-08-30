@@ -169,7 +169,14 @@ with tab1:
 # ------------------------------------------------
 with tab2:
 
-      # Total de pacientes
+          # ============================
+    # Cálculo de prevalencias
+    # ============================
+    import streamlit as st
+    import pandas as pd
+    import numpy as np
+    
+    # Total de pacientes
     total_pacientes = len(filtered_df)
     
     # Evitar dividir por 0
