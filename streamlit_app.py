@@ -84,27 +84,28 @@ import plotly.graph_objects as go
 # === Tab1 ===
 with tab1:
     # === Texto introductorio en recuadro claro con letra oscura ===
+    
     st.markdown("""
-    <div style="background-color:#f9f9f9; padding:20px; border-radius:10px; color:#1a1a1a;">
-        <strong>NHANES:</strong> El <strong>National Health and Nutrition Examination Survey (NHANES)</strong> es un programa de estudios de salud realizado por el <em>National Center for Health Statistics (NCHS)</em> de los <em>Centers for Disease Control and Prevention (CDC)</em> de Estados Unidos.<br><br>
-        Su objetivo es evaluar el estado de salud y nutrición de la población estadounidense mediante un diseño muestral representativo a nivel nacional.<br><br>
-        El estudio combina una <strong>entrevista en el hogar</strong> —en la que se recogen datos demográficos, socioeconómicos, dietarios y de salud— con un <strong>examen físico y pruebas de laboratorio</strong> realizados en un <em>Mobile Examination Center (MEC)</em>, que es una unidad clínica móvil equipada para realizar evaluaciones estandarizadas.<br><br>
-        Los datos se recogen de manera continua y se publican en ciclos de <strong>dos años</strong>, lo que permite analizar tendencias en salud a lo largo del tiempo. NHANES incluye participantes de todas las edades y etnias, y sus resultados son ampliamente utilizados para la <strong>vigilancia epidemiológica</strong>, la <strong>investigación clínica</strong> y la <strong>formulación de políticas públicas en salud</strong>.
-
-    Para este análisis, se combinó la información de diferentes módulos de NHANES en un único registro por paciente, usando la clave única `SEQN`.  
-    
-    **Módulos incluidos:**
-    - **Demografía (demo1):** edad, sexo, raza, ingresos.  
-    - **Examen físico (body1):** peso, talla, IMC.  
-    - **Laboratorio de colesterol (tchol).**  
-    - **Hemograma completo (cbc).**  
-    - **Insulina (ins).**  
-    - **Glucosa (glu).**  
-    - **Presión arterial y antecedentes (bpq).**  
-    - **Diagnóstico de diabetes (diq).**  
-    
+<div style="background-color:#f9f9f9; padding:20px; border-radius:10px; color:#1a1a1a;">
+    <strong>NHANES:</strong> El <strong>National Health and Nutrition Examination Survey (NHANES)</strong> es un programa de estudios de salud realizado por el <em>National Center for Health Statistics (NCHS)</em> de los <em>Centers for Disease Control and Prevention (CDC)</em> de Estados Unidos.<br><br>
+    Su objetivo es evaluar el estado de salud y nutrición de la población estadounidense mediante un diseño muestral representativo a nivel nacional.<br><br>
+    El estudio combina una <strong>entrevista en el hogar</strong> con un <strong>examen físico y pruebas de laboratorio</strong> realizados en un <em>Mobile Examination Center (MEC)</em>.<br><br>
+    <hr>
+    Para este análisis, se combinó la información de diferentes módulos de NHANES en un único registro por paciente, usando la clave única <code>SEQN</code>.<br><br>
+    <strong>Módulos incluidos:</strong>
+    <ul>
+        <li>Demografía (demo1): edad, sexo, raza, ingresos.</li>
+        <li>Examen físico (body1): peso, talla, IMC.</li>
+        <li>Laboratorio de colesterol (tchol).</li>
+        <li>Hemograma completo (cbc).</li>
+        <li>Insulina (ins).</li>
+        <li>Glucosa (glu).</li>
+        <li>Presión arterial y antecedentes (bpq).</li>
+        <li>Diagnóstico de diabetes (diq).</li>
+    </ul>
     Esto permite analizar de manera integrada datos demográficos, medidas físicas, resultados de laboratorio y cuestionarios médicos de cada paciente.
-    """)
+</div>
+""", unsafe_allow_html=True)
 
   
 
