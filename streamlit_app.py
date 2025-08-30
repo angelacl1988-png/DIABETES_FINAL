@@ -587,7 +587,7 @@ with tab4:
 
         cat_pipe = Pipeline([
             ("imputer", SimpleImputer(strategy="most_frequent")),
-            ("oh", OneHotEncoder(handle_unknown="ignore"))
+            ("oh", OneHotEncoder(handle_unknown="ignore", sparse=False))  # <-- seguro
         ])
 
         return ColumnTransformer([
@@ -678,6 +678,7 @@ with tab4:
         title="Top 20 variables según Random Forest vs L1 Logistic Regression"
     )
     st.plotly_chart(fig, use_container_width=True)
+
 
 
 # ======================================================
