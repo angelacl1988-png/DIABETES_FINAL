@@ -557,113 +557,66 @@ with tab3:
 
 
 # ------------------------------------------------
-# TAB 4: Comparación de selección de variables (LASSO vs Random Forest)
+# TAB 4: Comparación LASSO vs Random Forest
 # ------------------------------------------------
 with tab4:
-    st.header("🔎 Comparación de métodos de selección de variables")
-
-    from sklearn.linear_model import LassoCV, LogisticRegression
-    from sklearn.ensemble import RandomForestClassifier
-    from sklearn.model_selection import train_test_split
-    from sklearn.metrics import roc_curve, auc, accuracy_score, precision_score, recall_score, f1_score
-    import matplotlib.pyplot as plt
+    st.subheader("Comparación de selección de variables: LASSO vs Random Forest")
 
     # --- División train/test ---
     X_train, X_test, y_train, y_test = train_test_split(
-        X_imp, y, test_size=0.3, random_state=42, stratify=y
+        X_encoded, y, test_size=0.3, random_state=42, stratify=y
     )
 
-    # ============================================================
-    # MÉTODO 1: LASSO
-    # ============================================================
-    lasso = LassoCV(cv=5, random_state=42).fit(X_train, y_train)
+    # --- Modelo LASSO ---
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
 
-    # Variables seleccionadas
-    coef_lasso = pd.Series(lasso.coef_, index=X_encoded.columns)
-    lasso_vars = coef_lasso[coef_lasso != 0].index
-    n_vars_lasso = len(lasso_vars)
+    lasso = LogisticRegression(penalty="l1", solver="saga", max_iter=5000, random_state=42)
+    lasso.fit(X_train_scaled, y_train)
+    y_pred_lasso = lasso.predict(X_test_scaled)
+    y_prob_lasso = lasso.predict_proba(X_test_scaled)[:, 1]
+    auc_lasso = roc_auc_score(y_test, y_prob_lasso)
+    n_vars_lasso = (lasso.coef_ != 0).sum()
 
-    st.subheader("📌 Variables seleccionadas por LASSO")
-    st.write(f"**Número de variables:** {n_vars_lasso}")
-    st.dataframe(pd.DataFrame({
-        "Variable": lasso_vars,
-        "Coeficiente": coef_lasso[lasso_vars].values
-    }).sort_values(by="Coeficiente", key=abs, ascending=False))
-
-    # Modelo Logistic Regression con variables LASSO
-    logit = LogisticRegression(max_iter=10000)
-    logit.fit(pd.DataFrame(X_train, columns=X_encoded.columns)[lasso_vars], y_train)
-    y_prob_lasso = logit.predict_proba(pd.DataFrame(X_test, columns=X_encoded.columns)[lasso_vars])[:, 1]
-
-    # ============================================================
-    # MÉTODO 2: Random Forest
-    # ============================================================
+    # --- Modelo Random Forest ---
     rf_model = RandomForestClassifier(n_estimators=500, random_state=42)
     rf_model.fit(X_train, y_train)
-
-    rf_importances = pd.Series(rf_model.feature_importances_, index=X_encoded.columns)
-    rf_vars = rf_importances[rf_importances > 0].index
-    n_vars_rf = len(rf_vars)
-
-    st.subheader("📌 Variables importantes por Random Forest")
-    st.write(f"**Número de variables:** {n_vars_rf}")
-    st.dataframe(pd.DataFrame({
-        "Variable": rf_vars,
-        "Importancia": rf_importances[rf_vars].values
-    }).sort_values(by="Importancia", ascending=False))
-
+    y_pred_rf = rf_model.predict(X_test)
     y_prob_rf = rf_model.predict_proba(X_test)[:, 1]
+    auc_rf = roc_auc_score(y_test, y_prob_rf)
+    n_vars_rf = (rf_model.feature_importances_ > 0).sum()
 
-    # ============================================================
-    # COMPARACIÓN ROC
-    # ============================================================
+    # --- Curva ROC ---
     fpr_lasso, tpr_lasso, _ = roc_curve(y_test, y_prob_lasso)
-    auc_lasso = auc(fpr_lasso, tpr_lasso)
-
     fpr_rf, tpr_rf, _ = roc_curve(y_test, y_prob_rf)
-    auc_rf = auc(fpr_rf, tpr_rf)
 
-    st.subheader("📈 Curvas ROC comparativas")
-    fig, ax = plt.subplots(figsize=(6, 6))
-    ax.plot(fpr_lasso, tpr_lasso, label=f"LASSO + LogReg (AUC = {auc_lasso:.3f})", color="cyan")
-    ax.plot(fpr_rf, tpr_rf, label=f"Random Forest (AUC = {auc_rf:.3f})", color="orange")
-    ax.plot([0, 1], [0, 1], "k--", label="No discriminación")
-    ax.set_xlabel("1 - Especificidad (FPR)")
-    ax.set_ylabel("Sensibilidad (TPR)")
-    ax.set_title("Curvas ROC comparativas")
+    fig, ax = plt.subplots()
+    ax.plot(fpr_lasso, tpr_lasso, label=f"LASSO (AUC = {auc_lasso:.3f})")
+    ax.plot(fpr_rf, tpr_rf, label=f"Random Forest (AUC = {auc_rf:.3f})")
+    ax.plot([0, 1], [0, 1], "k--", alpha=0.7)
+    ax.set_xlabel("Tasa de Falsos Positivos (1 - Especificidad)")
+    ax.set_ylabel("Tasa de Verdaderos Positivos (Sensibilidad)")
+    ax.set_title("Curvas ROC")
     ax.legend(loc="lower right")
     st.pyplot(fig)
 
-    # ============================================================
-    # TABLA DE MÉTRICAS
-    # ============================================================
-    y_pred_lasso = logit.predict(pd.DataFrame(X_test, columns=X_encoded.columns)[lasso_vars])
-    y_pred_rf = rf_model.predict(X_test)
-
+    # --- Tabla comparativa ---
     results = pd.DataFrame({
-        "Método": ["LASSO + LogReg", "Random Forest"],
-        "Accuracy": [
-            accuracy_score(y_test, y_pred_lasso),
-            accuracy_score(y_test, y_pred_rf)
-        ],
-        "Precision": [
-            precision_score(y_test, y_pred_lasso),
-            precision_score(y_test, y_pred_rf)
-        ],
-        "Recall": [
-            recall_score(y_test, y_pred_lasso),
-            recall_score(y_test, y_pred_rf)
-        ],
-        "F1": [
-            f1_score(y_test, y_pred_lasso),
-            f1_score(y_test, y_pred_rf)
-        ],
+        "Modelo": ["LASSO", "Random Forest"],
+        "Accuracy": [accuracy_score(y_test, y_pred_lasso), accuracy_score(y_test, y_pred_rf)],
+        "F1-score": [f1_score(y_test, y_pred_lasso), f1_score(y_test, y_pred_rf)],
+        "Recall": [recall_score(y_test, y_pred_lasso), recall_score(y_test, y_pred_rf)],
         "AUC": [auc_lasso, auc_rf],
-        "Variables usadas": [n_vars_lasso, n_vars_rf]
+        "Variables Seleccionadas": [n_vars_lasso, n_vars_rf]
     })
 
-    st.subheader("📊 Comparación de métricas")
-    st.dataframe(results.round(3))
+    st.write("### Resultados comparativos")
+    st.dataframe(results.style.format({
+        "Accuracy": "{:.3f}", "F1-score": "{:.3f}",
+        "Recall": "{:.3f}", "AUC": "{:.3f}"
+    }))
+
 
 
 # ======================================================
