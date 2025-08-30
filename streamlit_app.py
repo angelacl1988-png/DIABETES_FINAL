@@ -601,7 +601,7 @@ import streamlit as st
        - Evalúa la **asociación estadística** entre cada variable independiente y la variable objetivo de manera individual.  
        - Se seleccionan las variables que muestran mayor dependencia con la salida.  
        - En este caso, **solo 4 variables** fueron necesarias para cubrir el **90% de la importancia acumulada**.  
-       - ➡️ Indica que unas pocas variables tienen un peso muy fuerte en la relación con el desenlace.
+       - Indica que unas pocas variables tienen un peso muy fuerte en la relación con el desenlace.
     
     2. **Incrustado (Random Forest)**  
        - Utiliza modelos de aprendizaje automático (árboles de decisión en este caso) que asignan una **importancia** a cada variable durante el entrenamiento.  
