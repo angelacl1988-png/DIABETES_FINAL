@@ -104,6 +104,8 @@ with tab1:
             <li>Diagnóstico de diabetes (diq).</li>
         </ul>
         Esto permite analizar de manera integrada datos demográficos, medidas físicas, resultados de laboratorio y cuestionarios médicos de cada paciente.
+        </ul>
+        **  Este dashboard tiene como propósito explorar los datos de NHANES y analizar de manera interactiva cuáles variables demográficas, clínicas, de laboratorio y de estilo de vida están asociadas con la diabetes. Permite visualizar patrones, comparar subgrupos y facilitar la identificación de factores de riesgo potenciales,**
     </div>
     """, unsafe_allow_html=True)
 
