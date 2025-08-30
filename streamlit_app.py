@@ -176,13 +176,13 @@ with tab2:
     
     col1, col2, col3 = st.columns(3)
     
-    with col1:
+    with col2:
         st.metric(
             label="Diabetes",
             value=f"{prevalencia_diabetes:.2f}%",
             delta=f"{casos_diabetes}/{total_diabetes} casos"
         )
-    with col2:
+    with col1:
         st.metric(
             label="Prediabetes",
             value=f"{prevalencia_prediabetes:.2f}%",
