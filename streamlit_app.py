@@ -809,4 +809,87 @@ with tab5:
     plt.tight_layout()
     st.pyplot(fig)
 
+# ============================
+    # Evaluación de modelos según selección de variables
+    # ============================
+    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, roc_curve
+    from sklearn.model_selection import train_test_split
+    
+    # Split común
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_num, y, test_size=0.3, random_state=42, stratify=y
+    )
+    
+    def evaluar_modelo(features, nombre):
+        model = LogisticRegression(max_iter=1000)
+        model.fit(X_train[features], y_train)
+        y_pred = model.predict(X_test[features])
+        y_prob = model.predict_proba(X_test[features])[:, 1]
+    
+        return {
+            "Método": nombre,
+            "Accuracy": accuracy_score(y_test, y_pred),
+            "Precision": precision_score(y_test, y_pred),
+            "Recall": recall_score(y_test, y_pred),
+            "F1": f1_score(y_test, y_pred),
+            "AUC": roc_auc_score(y_test, y_prob),
+            "fpr_tpr": roc_curve(y_test, y_prob)  # necesario para la curva ROC
+        }
+    
+    # Evaluar cada método
+    resultados = []
+    resultados.append(evaluar_modelo(selected_filter, "Filtrado (Chi2)"))
+    resultados.append(evaluar_modelo(selected_embedded, "Incrustado (RF)"))
+    resultados.append(evaluar_modelo(selected_wrap_90, "Envoltura (RFECV)"))
+    
+    # ============================
+    # Gráfico de métricas comparativas
+    # ============================
+    import plotly.graph_objects as go
+    
+    metrics = ["Accuracy", "Precision", "Recall", "F1", "AUC"]
+    fig_metrics = go.Figure()
+    
+    for r in resultados:
+        fig_metrics.add_trace(go.Bar(
+            x=metrics,
+            y=[r[m] for m in metrics],
+            name=r["Método"]
+        ))
+    
+    fig_metrics.update_layout(
+        title="📊 Comparación de métricas por método de selección",
+        barmode="group",
+        yaxis=dict(title="Valor")
+    )
+    st.plotly_chart(fig_metrics)
+    
+    # ============================
+    # Curvas ROC
+    # ============================
+    fig_roc = go.Figure()
+    
+    for r in resultados:
+        fpr, tpr, _ = r["fpr_tpr"]
+        fig_roc.add_trace(go.Scatter(
+            x=fpr, y=tpr,
+            mode="lines",
+            name=f"{r['Método']} (AUC={r['AUC']:.2f})"
+        ))
+    
+    # Línea diagonal referencia
+    fig_roc.add_trace(go.Scatter(
+        x=[0, 1], y=[0, 1],
+        mode="lines", line=dict(dash="dash", color="gray"),
+        showlegend=False
+    ))
+    
+    fig_roc.update_layout(
+        title="📈 Curvas ROC comparativas",
+        xaxis=dict(title="False Positive Rate"),
+        yaxis=dict(title="True Positive Rate"),
+        width=700, height=500
+    )
+    st.plotly_chart(fig_roc)
+
 
