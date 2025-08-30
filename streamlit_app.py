@@ -570,13 +570,16 @@ with tab4:
     UMBRAL_ACUM = 0.80
     RANDOM_STATE = 42
     TARGET_COL = "Diagnóstico médico de diabetes"
+    TARGET_COLS = ["Diagnóstico médico de diabetes", "Diagnóstico de diabetes (Sí/No)", "Diagnóstico de diabetes (Original)"]
     ID_COLS = ["SEQN"]
 
     # --- Preparar X e y ---
     df_sel = df.dropna(subset=[TARGET_COL]).copy()
-    drop_cols = set(ID_COLS) | set([TARGET_COL])
-    num_cols = [c for c in df_sel.select_dtypes(include=["int64","float64"]).columns if c not in drop_cols]
-    cat_cols = [c for c in df_sel.select_dtypes(include=["object","category","bool"]).columns if c not in drop_cols]
+    drop_cols = set(ID_COLS) | set([TARGET_COLS])
+    num_cols = [c for c in df.select_dtypes(include=["int64","float64","int32","float32"]).columns
+            if c not in drop_cols]
+    cat_cols = [c for c in df.select_dtypes(include=["object","category","bool"]).columns
+            if c not in drop_cols]
 
     X = df_sel[num_cols + cat_cols].copy()
     y = df_sel[TARGET_COL].map({"No":0, "Sí":1}).astype(int)
