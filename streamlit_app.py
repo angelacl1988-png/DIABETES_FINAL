@@ -453,11 +453,15 @@ with tab3:
        # ======================================================
     # SUBTAB MCA
     # ======================================================
+
     with tab_mca:
            
         # Selección y limpieza de categóricas
        
         X_cat = X.select_dtypes(exclude=[np.number])
+
+           # === Información de la base ===
+        st.info(f"📌 La base de datos tiene **{X_cat.shape[1]} variables** y **{X_cat.shape[0]} registros**.")
 
         # Matriz disyuntiva (todas las categorías)
         X_disc = pd.get_dummies(X_cat, drop_first=False)
