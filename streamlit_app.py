@@ -555,4 +555,117 @@ with tab3:
         else:
             st.warning("⚠️ Aún no has corrido el bloque PCA para generar DF_PCA_final.")
 
+## ------------------------------------------------
+# TAB 4: Selección de Variables
+# ------------------------------------------------
+with tab4:
+    st.header("⚙️ Selección de Variables")
+
+    st.markdown("""
+    En esta sección se aplican **tres enfoques diferentes de selección de variables** sobre el conjunto de datos de ejemplo
+    (`Breast Cancer Dataset` de sklearn) para ilustrar cómo identificar las variables más importantes:
+    
+    1. **Filtrado (SelectKBest con Chi²)**
+    2. **Incrustado (Random Forest feature_importances_)**
+    3. **Envoltura (RFECV con Logistic Regression)**
+    """)
+
+    # --- Cargar datos de ejemplo ---
+    from sklearn.datasets import load_breast_cancer
+    from sklearn.feature_selection import SelectKBest, chi2, RFECV
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import Pipeline
+
+    data = load_breast_cancer()
+    X = pd.DataFrame(data.data, columns=data.feature_names)
+    y = data.target
+    features = X.columns
+
+    # --- 1. Selección por filtrado ---
+    selector = SelectKBest(score_func=chi2, k="all")
+    selector.fit(X.abs(), y)
+    scores_filter = selector.scores_
+    indices_filter = np.argsort(scores_filter)[::-1]
+    sorted_scores_filter = scores_filter[indices_filter]
+    sorted_features_filter = features[indices_filter]
+
+    cumulative_filter = np.cumsum(sorted_scores_filter) / np.sum(sorted_scores_filter)
+    cutoff_filter = np.searchsorted(cumulative_filter, 0.90) + 1
+    selected_filter = sorted_features_filter[:cutoff_filter]
+
+    # --- 2. Incrustado (RandomForest) ---
+    rf = RandomForestClassifier(n_estimators=100, random_state=42)
+    rf.fit(X, y)
+    importances_embedded = rf.feature_importances_
+    indices_embedded = np.argsort(importances_embedded)[::-1]
+    sorted_importances_embedded = importances_embedded[indices_embedded]
+    sorted_features_embedded = features[indices_embedded]
+
+    cumulative_embedded = np.cumsum(sorted_importances_embedded) / np.sum(sorted_importances_embedded)
+    cutoff_embedded = np.searchsorted(cumulative_embedded, 0.90) + 1
+    selected_embedded = sorted_features_embedded[:cutoff_embedded]
+
+    # --- 3. Envoltura (RFECV con LogisticRegression) ---
+    scaler = StandardScaler()
+    model = LogisticRegression(max_iter=1000)
+    rfecv = RFECV(estimator=model, step=1, cv=5, scoring="accuracy")
+    pipeline = Pipeline([("scaler", scaler), ("feature_selection", rfecv)])
+    pipeline.fit(X, y)
+
+    selected_wrap = X.columns[rfecv.support_]
+    coefs = rfecv.estimator_.coef_.flatten()
+    indices_wrap = np.argsort(np.abs(coefs))[::-1]
+    abs_coefs_sorted = np.abs(coefs)[indices_wrap]
+    cumulative_wrap = np.cumsum(abs_coefs_sorted) / np.sum(abs_coefs_sorted)
+    cutoff_wrap = np.searchsorted(cumulative_wrap, 0.90) + 1
+    selected_wrap_90 = selected_wrap[indices_wrap][:cutoff_wrap]
+
+    # --- Mostrar resultados ---
+    st.subheader("📌 Número de variables necesarias para explicar el 90% de la importancia")
+    st.write(f"**Filtrado:** {cutoff_filter} variables")
+    st.write(f"**Incrustado (Random Forest):** {cutoff_embedded} variables")
+    st.write(f"**Envoltura (RFECV):** {cutoff_wrap} variables")
+
+    st.subheader("📌 Variables seleccionadas (90% acumulado)")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.write("**Filtrado:**")
+        st.write(selected_filter.tolist())
+    with col2:
+        st.write("**Incrustado:**")
+        st.write(selected_embedded.tolist())
+    with col3:
+        st.write("**Envoltura:**")
+        st.write(selected_wrap_90.tolist())
+
+    # --- Graficas comparativas ---
+    st.subheader("📊 Comparación de métodos de selección")
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+
+    axes[0].bar(range(len(sorted_scores_filter)), sorted_scores_filter, color="skyblue")
+    axes[0].set_xticks(range(len(sorted_features_filter)))
+    axes[0].set_xticklabels(sorted_features_filter, rotation=90)
+    axes[0].set_title("Filtrado (SelectKBest chi2)")
+    axes[0].axvline(cutoff_filter-1, color="red", linestyle="--", label="90% acumulado")
+    axes[0].legend()
+
+    axes[1].bar(range(len(sorted_importances_embedded)), sorted_importances_embedded, color="lightgreen")
+    axes[1].set_xticks(range(len(sorted_features_embedded)))
+    axes[1].set_xticklabels(sorted_features_embedded, rotation=90)
+    axes[1].set_title("Incrustado (Random Forest)")
+    axes[1].axvline(cutoff_embedded-1, color="red", linestyle="--", label="90% acumulado")
+    axes[1].legend()
+
+    axes[2].bar(range(len(abs_coefs_sorted)), abs_coefs_sorted, color="salmon")
+    axes[2].set_xticks(range(len(selected_wrap)))
+    axes[2].set_xticklabels(selected_wrap[indices_wrap], rotation=90)
+    axes[2].set_title("Envoltura (RFECV coef)")
+    axes[2].axvline(cutoff_wrap-1, color="red", linestyle="--", label="90% acumulado")
+    axes[2].legend()
+
+    st.pyplot(fig)
+
+
 
