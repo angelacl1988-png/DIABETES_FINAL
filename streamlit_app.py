@@ -833,7 +833,7 @@ with tab4:
     st.plotly_chart(fig_roc)
 
 
-        st.markdown("""
+    st.markdown("""
     
         **Interpretación global:**  
     - El método **Chi² (filtrado)** es más restrictivo, seleccionando muy pocas variables clave.  
