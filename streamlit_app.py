@@ -177,7 +177,7 @@ with tab2:
     import numpy as np
     
     # Total de pacientes
-    total_pacientes = len(filtered_df)
+    total_pacientes = len(df)
     
     # Evitar dividir por 0
     if total_pacientes > 0:
