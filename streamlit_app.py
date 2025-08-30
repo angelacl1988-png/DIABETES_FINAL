@@ -172,7 +172,7 @@ with tab2:
     # ============================
 
     # Total de pacientes
-    total_pacientes = len(filtered_df)
+    total_pacientes = len(df)
 
     # Evitar división por 0
     if total_pacientes > 0:
