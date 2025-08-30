@@ -556,66 +556,99 @@ with tab3:
             st.warning("⚠️ Aún no has corrido el bloque PCA para generar DF_PCA_final.")
 
 
-# ------------------------------------------------
-# TAB 4: Comparación LASSO vs Random Forest
-# ------------------------------------------------
+# TAB 4 - Selección de Variables
+# ==============================
+from sklearn.linear_model import LassoCV
+from sklearn.ensemble import RandomForestClassifier
+
 with tab4:
-    st.subheader("Comparación de selección de variables: LASSO vs Random Forest")
+    st.subheader("📌 Selección de Variables: LASSO vs Random Forest")
 
-    # --- División train/test ---
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_encoded, y, test_size=0.3, random_state=42, stratify=y
-    )
+    TARGET_COL = "Diagnóstico médico de diabetes"
 
-    # --- Modelo LASSO ---
+    # --- Preparar dataset ---
+    X = df.drop(columns=["SEQN", "Diagnóstico médico de prediabetes", "Uso actual de insulina"], errors="ignore")
+    y = df[TARGET_COL].copy()
+
+    # Convertir objetivo a binario (0/1)
+    y = y.map({"Sí": 1, "No": 0})
+
+    # Codificar categóricas
+    X_encoded = pd.get_dummies(X.drop(columns=[TARGET_COL], errors="ignore"), drop_first=True)
+
+    # Imputación y escalado para LASSO
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.impute import SimpleImputer
+
+    imputer = SimpleImputer(strategy="median")
     scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
 
-    lasso = LogisticRegression(penalty="l1", solver="saga", max_iter=5000, random_state=42)
-    lasso.fit(X_train_scaled, y_train)
-    y_pred_lasso = lasso.predict(X_test_scaled)
-    y_prob_lasso = lasso.predict_proba(X_test_scaled)[:, 1]
-    auc_lasso = roc_auc_score(y_test, y_prob_lasso)
-    n_vars_lasso = (lasso.coef_ != 0).sum()
+    X_imp = imputer.fit_transform(X_encoded)
+    X_scaled = scaler.fit_transform(X_imp)
 
-    # --- Modelo Random Forest ---
-    rf_model = RandomForestClassifier(n_estimators=500, random_state=42)
-    rf_model.fit(X_train, y_train)
-    y_pred_rf = rf_model.predict(X_test)
-    y_prob_rf = rf_model.predict_proba(X_test)[:, 1]
-    auc_rf = roc_auc_score(y_test, y_prob_rf)
-    n_vars_rf = (rf_model.feature_importances_ > 0).sum()
+    # === LASSO ===
+    lasso = LassoCV(cv=5, random_state=42, max_iter=10000)
+    lasso.fit(X_scaled, y)
 
-    # --- Curva ROC ---
-    fpr_lasso, tpr_lasso, _ = roc_curve(y_test, y_prob_lasso)
-    fpr_rf, tpr_rf, _ = roc_curve(y_test, y_prob_rf)
+    coef = pd.Series(lasso.coef_, index=X_encoded.columns)
+    lasso_vars = coef[coef != 0].sort_values(key=abs, ascending=False)
 
-    fig, ax = plt.subplots()
-    ax.plot(fpr_lasso, tpr_lasso, label=f"LASSO (AUC = {auc_lasso:.3f})")
-    ax.plot(fpr_rf, tpr_rf, label=f"Random Forest (AUC = {auc_rf:.3f})")
-    ax.plot([0, 1], [0, 1], "k--", alpha=0.7)
-    ax.set_xlabel("Tasa de Falsos Positivos (1 - Especificidad)")
-    ax.set_ylabel("Tasa de Verdaderos Positivos (Sensibilidad)")
-    ax.set_title("Curvas ROC")
-    ax.legend(loc="lower right")
-    st.pyplot(fig)
+    st.markdown("### 🔎 Variables seleccionadas por **LASSO**")
+    st.dataframe(lasso_vars.head(20))
 
-    # --- Tabla comparativa ---
-    results = pd.DataFrame({
-        "Modelo": ["LASSO", "Random Forest"],
-        "Accuracy": [accuracy_score(y_test, y_pred_lasso), accuracy_score(y_test, y_pred_rf)],
-        "F1-score": [f1_score(y_test, y_pred_lasso), f1_score(y_test, y_pred_rf)],
-        "Recall": [recall_score(y_test, y_pred_lasso), recall_score(y_test, y_pred_rf)],
-        "AUC": [auc_lasso, auc_rf],
-        "Variables Seleccionadas": [n_vars_lasso, n_vars_rf]
+    fig_lasso = px.bar(
+        lasso_vars.head(15).sort_values(),
+        x=lasso_vars.head(15).sort_values().values,
+        y=lasso_vars.head(15).sort_values().index,
+        orientation="h",
+        title="Top 15 coeficientes distintos de cero (LASSO)",
+        color=lasso_vars.head(15).abs().values,
+        color_continuous_scale="Viridis"
+    )
+    st.plotly_chart(fig_lasso, use_container_width=True)
+
+    # === Random Forest ===
+    rf = RandomForestClassifier(n_estimators=500, random_state=42)
+    rf.fit(X_imp, y)
+
+    importancias = pd.Series(rf.feature_importances_, index=X_encoded.columns)
+    rf_vars = importancias.sort_values(ascending=False)
+
+    st.markdown("### 🔎 Importancia de variables según **Random Forest**")
+    st.dataframe(rf_vars.head(20))
+
+    fig_rf = px.bar(
+        rf_vars.head(15).sort_values(),
+        x=rf_vars.head(15).sort_values().values,
+        y=rf_vars.head(15).sort_values().index,
+        orientation="h",
+        title="Top 15 variables más importantes (Random Forest)",
+        color=rf_vars.head(15).values,
+        color_continuous_scale="Plasma"
+    )
+    st.plotly_chart(fig_rf, use_container_width=True)
+
+    # === Comparación directa ===
+    st.subheader("📊 Comparación LASSO vs RF")
+    comparacion = pd.DataFrame({
+        "LASSO (|coef|)": lasso_vars.reindex(X_encoded.columns).abs(),
+        "Random Forest (importancia)": rf_vars.reindex(X_encoded.columns)
     })
 
-    st.write("### Resultados comparativos")
-    st.dataframe(results.style.format({
-        "Accuracy": "{:.3f}", "F1-score": "{:.3f}",
-        "Recall": "{:.3f}", "AUC": "{:.3f}"
-    }))
+    comparacion = comparacion.fillna(0)
+
+    fig_comp = px.scatter(
+        comparacion,
+        x="LASSO (|coef|)",
+        y="Random Forest (importancia)",
+        text=comparacion.index,
+        size="Random Forest (importancia)",
+        opacity=0.7,
+        title="Comparación de importancia de variables: LASSO vs Random Forest"
+    )
+    st.plotly_chart(fig_comp, use_container_width=True)
+
+    st.info("👉 LASSO fuerza coeficientes a cero (selección estricta), mientras que Random Forest distribuye importancia entre todas las variables.")
 
 
 
