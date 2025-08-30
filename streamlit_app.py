@@ -196,34 +196,56 @@ with tab2:
         # Uso de insulina
         casos_insulina = (filtered_df["Uso actual de insulina"] == "Sí").sum()
         prevalencia_insulina = (casos_insulina / total_pacientes) * 100
-    
 
+    # Total de pacientes
+    total_pacientes = len(filtered_df)
     
-    # ============================
-    # Métricas en columnas
-    # ============================
-    col1, col2, col3 = st.columns(3)
+    # Evitar división por 0
+    if total_pacientes > 0:
+        # Contar solo los "Sí" (NaN no se cuentan)
+        casos_diabetes = (filtered_df["Diagnóstico médico de diabetes"] == "Sí").sum()
+        casos_prediabetes = (filtered_df["Diagnóstico médico de prediabetes"] == "Sí").sum()
+        casos_insulina = (filtered_df["Uso actual de insulina"] == "Sí").sum()
     
-    with col1:
-        st.metric(
-            label="Prediabetes",
-            value=f"{prevalencia_prediabetes:.2f}%",
-            delta=f"{casos_prediabetes}/{total_pacientes} casos"
-        )
+        # Calcular prevalencias sobre toda la población
+        prevalencia_diabetes = (casos_diabetes / total_pacientes) * 100
+        prevalencia_prediabetes = (casos_prediabetes / total_pacientes) * 100
+        prevalencia_insulina = (casos_insulina / total_pacientes) * 100
+    else:
+        casos_diabetes = casos_prediabetes = casos_insulina = 0
+        prevalencia_diabetes = prevalencia_prediabetes = prevalencia_insulina = 0
     
-    with col2:
-        st.metric(
-            label="Diabetes",
-            value=f"{prevalencia_diabetes:.2f}%",
-            delta=f"{casos_diabetes}/{total_pacientes} casos"
-        )
+    # Mostrar resultados con st.write
+    st.write(f"Prevalencia de diabetes: {prevalencia_diabetes:.2f}% ({casos_diabetes}/{total_pacientes} casos)")
+    st.write(f"Prevalencia de prediabetes: {prevalencia_prediabetes:.2f}% ({casos_prediabetes}/{total_pacientes} casos)")
+    st.write(f"Prevalencia de uso de insulina: {prevalencia_insulina:.2f}% ({casos_insulina}/
     
-    with col3:
-        st.metric(
-            label="Uso de Insulina",
-            value=f"{prevalencia_insulina:.2f}%",
-            delta=f"{casos_insulina}/{total_pacientes} casos"
-        )
+        
+        # ============================
+        # Métricas en columnas
+        # ============================
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric(
+                label="Prediabetes",
+                value=f"{prevalencia_prediabetes:.2f}%",
+                delta=f"{casos_prediabetes}/{total_pacientes} casos"
+            )
+        
+        with col2:
+            st.metric(
+                label="Diabetes",
+                value=f"{prevalencia_diabetes:.2f}%",
+                delta=f"{casos_diabetes}/{total_pacientes} casos"
+            )
+        
+        with col3:
+            st.metric(
+                label="Uso de Insulina",
+                value=f"{prevalencia_insulina:.2f}%",
+                delta=f"{casos_insulina}/{total_pacientes} casos"
+            )
 
 
 
