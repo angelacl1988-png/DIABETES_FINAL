@@ -556,12 +556,12 @@ with tab3:
             st.warning("⚠️ Aún no has corrido el bloque PCA para generar DF_PCA_final.")
 
 
-
 # ------------------------------------------------
 # TAB 4: Selección de Variables
 # ------------------------------------------------
 with tab4:
 
+    st.header("🔎 Selección de Variables")
 
     # --- Preprocesamiento ---
     TARGET_COL = "Diagnóstico médico de diabetes"
@@ -649,74 +649,57 @@ with tab4:
     st.write("**Envoltura (RFECV):**", selected_wrap_90.tolist())
 
     # ============================
-    # Gráficas comparativas
+    # Gráficas comparativas con Plotly
     # ============================
-  import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+    from plotly.subplots import make_subplots
+    import plotly.graph_objects as go
 
-# Crear subplots: 1 fila, 3 columnas
-fig = make_subplots(rows=1, cols=3, subplot_titles=["Filtrado (Chi2)", "Incrustado (Random Forest)", "Envoltura (RFECV)"])
+    fig_vars = make_subplots(rows=1, cols=3, subplot_titles=("Filtrado (Chi2)", "Incrustado (RF)", "Envoltura (RFECV)"))
 
-# --- Filtrado ---
-fig.add_trace(
-    go.Bar(
-        x=sorted_features_filter,
-        y=sorted_scores_filter,
-        marker_color="skyblue",
-        name="Importancia"
-    ),
-    row=1, col=1
-)
-fig.add_vline(
-    x=cutoff_filter - 1,
-    line=dict(color="red", dash="dash"),
-    row=1, col=1
-)
+    # --- Filtrado
+    fig_vars.add_trace(
+        go.Bar(x=sorted_features_filter, y=sorted_scores_filter, marker_color="skyblue"),
+        row=1, col=1
+    )
+    fig_vars.add_shape(
+        type="line", x0=cutoff_filter - 1, x1=cutoff_filter - 1,
+        y0=0, y1=max(sorted_scores_filter),
+        line=dict(color="red", dash="dash"),
+        row=1, col=1
+    )
 
-# --- Incrustado ---
-fig.add_trace(
-    go.Bar(
-        x=sorted_features_embedded,
-        y=sorted_importances_embedded,
-        marker_color="lightgreen",
-        name="Importancia"
-    ),
-    row=1, col=2
-)
-fig.add_vline(
-    x=cutoff_embedded - 1,
-    line=dict(color="red", dash="dash"),
-    row=1, col=2
-)
+    # --- Incrustado
+    fig_vars.add_trace(
+        go.Bar(x=sorted_features_embedded, y=sorted_importances_embedded, marker_color="lightgreen"),
+        row=1, col=2
+    )
+    fig_vars.add_shape(
+        type="line", x0=cutoff_embedded - 1, x1=cutoff_embedded - 1,
+        y0=0, y1=max(sorted_importances_embedded),
+        line=dict(color="red", dash="dash"),
+        row=1, col=2
+    )
 
-# --- Envoltura ---
-fig.add_trace(
-    go.Bar(
-        x=[selected_wrap[i] for i in indices_wrap],
-        y=abs_coefs_sorted,
-        marker_color="salmon",
-        name="Coeficientes"
-    ),
-    row=1, col=3
-)
-fig.add_vline(
-    x=cutoff_wrap - 1,
-    line=dict(color="red", dash="dash"),
-    row=1, col=3
-)
+    # --- Envoltura
+    fig_vars.add_trace(
+        go.Bar(x=selected_wrap[indices_wrap], y=abs_coefs_sorted, marker_color="salmon"),
+        row=1, col=3
+    )
+    fig_vars.add_shape(
+        type="line", x0=cutoff_wrap - 1, x1=cutoff_wrap - 1,
+        y0=0, y1=max(abs_coefs_sorted),
+        line=dict(color="red", dash="dash"),
+        row=1, col=3
+    )
 
-# Ajustar diseño
-fig.update_layout(
-    height=500,
-    width=1300,
-    title_text="Comparación de métodos de selección de variables",
-    showlegend=False
-)
+    fig_vars.update_layout(
+        title_text="🔎 Comparación de Importancia de Variables por Método",
+        showlegend=False,
+        height=500, width=1200
+    )
+    st.plotly_chart(fig_vars)
 
-st.plotly_chart(fig, use_container_width=True)
-
-
-# ============================
+    # ============================
     # Evaluación de modelos según selección de variables
     # ============================
     from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, roc_curve
@@ -740,7 +723,7 @@ st.plotly_chart(fig, use_container_width=True)
             "Recall": recall_score(y_test, y_pred),
             "F1": f1_score(y_test, y_pred),
             "AUC": roc_auc_score(y_test, y_prob),
-            "fpr_tpr": roc_curve(y_test, y_prob)  # necesario para la curva ROC
+            "fpr_tpr": roc_curve(y_test, y_prob)
         }
     
     # Evaluar cada método
@@ -752,8 +735,6 @@ st.plotly_chart(fig, use_container_width=True)
     # ============================
     # Gráfico de métricas comparativas
     # ============================
-    import plotly.graph_objects as go
-    
     metrics = ["Accuracy", "Precision", "Recall", "F1", "AUC"]
     fig_metrics = go.Figure()
     
@@ -772,7 +753,7 @@ st.plotly_chart(fig, use_container_width=True)
     st.plotly_chart(fig_metrics)
     
     # ============================
-    # Curvas ROC
+    # Curvas ROC comparativas
     # ============================
     fig_roc = go.Figure()
     
@@ -784,7 +765,6 @@ st.plotly_chart(fig, use_container_width=True)
             name=f"{r['Método']} (AUC={r['AUC']:.2f})"
         ))
     
-    # Línea diagonal referencia
     fig_roc.add_trace(go.Scatter(
         x=[0, 1], y=[0, 1],
         mode="lines", line=dict(dash="dash", color="gray"),
@@ -798,6 +778,7 @@ st.plotly_chart(fig, use_container_width=True)
         width=700, height=500
     )
     st.plotly_chart(fig_roc)
+
 
 
 
