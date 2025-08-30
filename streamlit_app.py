@@ -893,110 +893,72 @@ with tab5:
     st.plotly_chart(fig_roc)
 
 # ------------------------------------------------
-# TAB 6: Comparación RFECV vs PCA/MCA
+# TAB 6: Comparación de modelos (Plotly)
 # ------------------------------------------------
 with tab6:
+    st.subheader("Comparación de métodos de selección de variables")
 
-    from sklearn.model_selection import train_test_split
-    from sklearn.metrics import accuracy_score, f1_score, roc_auc_score, roc_curve
-    import plotly.graph_objects as go
-
-    st.header("🔎 Comparación de modelos (RFECV vs PCA/MCA)")
-
-    # =====================
-    # 1. Bases de datos
-    # =====================
-    DF_RFECV = pd.concat([y.reset_index(drop=True),
-                          X_num[selected_wrap_90].reset_index(drop=True)], axis=1)
-    DF_PCA_final = pd.read_csv("pca_componentes.csv")
-    DF_MCA_final = pd.read_csv("mca_dimensiones.csv")
-    DF_final = pd.read_csv("pca_mca_concat.csv")
-
+    results = []
     datasets = {
-        "RFECV": DF_RFECV,
-        "PCA": DF_PCA_final,
-        "MCA": DF_MCA_final,
-        "PCA+MCA": DF_final
+        "Chi2": X_chi2,
+        "RandomForest": X_rf,
+        "RFECV": X_rfecv,
     }
 
-    # =====================
-    # 2. Evaluación
-    # =====================
-    results = {}
-    fpr_dict, tpr_dict = {}, {}
-
     for name, data in datasets.items():
-        Xd = data.drop(columns=[TARGET_COL])
+        # Asegurar consistencia en y
         yd = data[TARGET_COL].map({"Sí": 1, "No": 0})
+        mask = yd.notna()
+        Xd = data.drop(columns=[TARGET_COL]).loc[mask]
+        yd = yd.loc[mask].astype(int)
 
+        # Dividir datos
         X_train, X_test, y_train, y_test = train_test_split(
             Xd, yd, test_size=0.3, stratify=yd, random_state=42
         )
 
+        # Modelo base
         model = LogisticRegression(max_iter=1000)
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
         y_prob = model.predict_proba(X_test)[:, 1]
 
+        # Métricas
         acc = accuracy_score(y_test, y_pred)
         f1 = f1_score(y_test, y_pred)
         auc = roc_auc_score(y_test, y_prob)
 
-        results[name] = {"Accuracy": acc, "F1": f1, "AUC": auc}
+        results.append({
+            "Método": name,
+            "Accuracy": acc,
+            "F1-score": f1,
+            "AUC": auc,
+            "N_vars": Xd.shape[1]
+        })
 
-        # Guardar curva ROC
-        fpr, tpr, _ = roc_curve(y_test, y_prob)
-        fpr_dict[name], tpr_dict[name] = fpr, tpr
+    results_df = pd.DataFrame(results)
 
-    # =====================
-    # 3. Tabla de resultados
-    # =====================
-    df_results = pd.DataFrame(results).T.round(3)
-    st.subheader("📊 Resultados comparativos")
-    st.dataframe(df_results)
+    # Mostrar tabla
+    st.dataframe(results_df, use_container_width=True)
 
-    # =====================
-    # 4. Gráfico de métricas comparativas
-    # =====================
-    fig_metrics = go.Figure()
-    for metric in ["Accuracy", "F1", "AUC"]:
-        fig_metrics.add_trace(go.Bar(
-            x=df_results.index,
-            y=df_results[metric],
-            name=metric
-        ))
-    fig_metrics.update_layout(
-        barmode="group",
-        title="Comparación de métricas entre RFECV, PCA, MCA y PCA+MCA"
+    # Graficos con Plotly
+    metrics = ["Accuracy", "F1-score", "AUC"]
+    fig = make_subplots(rows=1, cols=3, subplot_titles=metrics)
+
+    for i, metric in enumerate(metrics, 1):
+        fig.add_trace(
+            go.Bar(x=results_df["Método"], y=results_df[metric], text=results_df[metric].round(3), textposition="auto"),
+            row=1, col=i
+        )
+
+    fig.update_layout(
+        title_text="Comparación de métricas por método",
+        height=500,
+        showlegend=False
     )
-    st.plotly_chart(fig_metrics, use_container_width=True)
 
-    # =====================
-    # 5. Curvas ROC
-    # =====================
-    st.subheader("📈 Curvas ROC")
-    fig_roc = go.Figure()
-    for name in datasets.keys():
-        fig_roc.add_trace(go.Scatter(
-            x=fpr_dict[name], y=tpr_dict[name],
-            mode="lines",
-            name=f"{name} (AUC={results[name]['AUC']:.2f})"
-        ))
-    fig_roc.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode="lines",
-                                 line=dict(dash="dash", color="gray"),
-                                 showlegend=False))
-    fig_roc.update_layout(
-        title="Curvas ROC comparativas",
-        xaxis_title="False Positive Rate",
-        yaxis_title="True Positive Rate"
-    )
-    st.plotly_chart(fig_roc, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True)
 
-    # =====================
-    # 6. Ranking automático
-    # =====================
-    best_model = df_results.sort_values(by=["AUC", "F1"], ascending=False).index[0]
-    st.success(f"⚡ El mejor dataset para este problema es: **{best_model}**")
 
 
 
