@@ -555,11 +555,15 @@ with tab3:
         else:
             st.warning("⚠️ Aún no has corrido el bloque PCA para generar DF_PCA_final.")
 
-
-# TAB 4 - Selección de Variables
-# ==============================
-from sklearn.linear_model import LassoCV
+# TAB 4 - Selección de Variables y Comparación de Modelos
+# =======================================================
+from sklearn.linear_model import LassoCV, LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import (
+    roc_curve, auc, accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+)
+import plotly.graph_objects as go
 
 with tab4:
     st.subheader("📌 Selección de Variables: LASSO vs Random Forest")
@@ -569,26 +573,30 @@ with tab4:
     # --- Preparar dataset ---
     X = df.drop(columns=["SEQN", "Diagnóstico médico de prediabetes", "Uso actual de insulina"], errors="ignore")
     y = df[TARGET_COL].copy()
-
-    # Convertir objetivo a binario (0/1)
-    y = y.map({"Sí": 1, "No": 0})
+    y = y.map({"Sí": 1, "No": 0})   # objetivo binario
 
     # Codificar categóricas
     X_encoded = pd.get_dummies(X.drop(columns=[TARGET_COL], errors="ignore"), drop_first=True)
 
-    # Imputación y escalado para LASSO
+    # Imputación + escalado
     from sklearn.preprocessing import StandardScaler
     from sklearn.impute import SimpleImputer
-
     imputer = SimpleImputer(strategy="median")
     scaler = StandardScaler()
-
     X_imp = imputer.fit_transform(X_encoded)
     X_scaled = scaler.fit_transform(X_imp)
 
+    # División train/test
+    X_train_s, X_test_s, y_train, y_test = train_test_split(
+        X_scaled, y, test_size=0.3, random_state=42, stratify=y
+    )
+    X_train, X_test, _, _ = train_test_split(
+        X_imp, y, test_size=0.3, random_state=42, stratify=y
+    )
+
     # === LASSO ===
     lasso = LassoCV(cv=5, random_state=42, max_iter=10000)
-    lasso.fit(X_scaled, y)
+    lasso.fit(X_train_s, y_train)
 
     coef = pd.Series(lasso.coef_, index=X_encoded.columns)
     lasso_vars = coef[coef != 0].sort_values(key=abs, ascending=False)
@@ -609,7 +617,7 @@ with tab4:
 
     # === Random Forest ===
     rf = RandomForestClassifier(n_estimators=500, random_state=42)
-    rf.fit(X_imp, y)
+    rf.fit(X_train, y_train)
 
     importancias = pd.Series(rf.feature_importances_, index=X_encoded.columns)
     rf_vars = importancias.sort_values(ascending=False)
@@ -633,9 +641,7 @@ with tab4:
     comparacion = pd.DataFrame({
         "LASSO (|coef|)": lasso_vars.reindex(X_encoded.columns).abs(),
         "Random Forest (importancia)": rf_vars.reindex(X_encoded.columns)
-    })
-
-    comparacion = comparacion.fillna(0)
+    }).fillna(0)
 
     fig_comp = px.scatter(
         comparacion,
@@ -648,8 +654,47 @@ with tab4:
     )
     st.plotly_chart(fig_comp, use_container_width=True)
 
-    st.info("👉 LASSO fuerza coeficientes a cero (selección estricta), mientras que Random Forest distribuye importancia entre todas las variables.")
+    # === Modelos finales y ROC ===
+    st.subheader("📈 Curva ROC y métricas")
 
+    # Modelo con LASSO (logistic regression sobre variables seleccionadas)
+    selected_lasso_vars = lasso_vars.index.tolist()
+    X_train_lasso = X_train_s[:, [X_encoded.columns.get_loc(v) for v in selected_lasso_vars]]
+    X_test_lasso = X_test_s[:, [X_encoded.columns.get_loc(v) for v in selected_lasso_vars]]
+
+    logreg = LogisticRegression(max_iter=1000)
+    logreg.fit(X_train_lasso, y_train)
+    y_pred_proba_lasso = logreg.predict_proba(X_test_lasso)[:, 1]
+    y_pred_lasso = logreg.predict(X_test_lasso)
+
+    # Modelo con RF (ya entrenado arriba)
+    y_pred_proba_rf = rf.predict_proba(X_test)[:, 1]
+    y_pred_rf = rf.predict(X_test)
+
+    # Curvas ROC
+    fpr_lasso, tpr_lasso, _ = roc_curve(y_test, y_pred_proba_lasso)
+    fpr_rf, tpr_rf, _ = roc_curve(y_test, y_pred_proba_rf)
+
+    auc_lasso = auc(fpr_lasso, tpr_lasso)
+    auc_rf = auc(fpr_rf, tpr_rf)
+
+    fig_roc = go.Figure()
+    fig_roc.add_trace(go.Scatter(x=fpr_lasso, y=tpr_lasso, mode="lines", name=f"LASSO (AUC={auc_lasso:.2f})"))
+    fig_roc.add_trace(go.Scatter(x=fpr_rf, y=tpr_rf, mode="lines", name=f"Random Forest (AUC={auc_rf:.2f})"))
+    fig_roc.add_trace(go.Scatter(x=[0,1], y=[0,1], mode="lines", name="Azar", line=dict(dash="dash")))
+    fig_roc.update_layout(title="Curva ROC - Comparación de Modelos", xaxis_title="False Positive Rate", yaxis_title="True Positive Rate")
+    st.plotly_chart(fig_roc, use_container_width=True)
+
+    # Métricas
+    metrics_df = pd.DataFrame({
+        "Modelo": ["LASSO", "Random Forest"],
+        "Accuracy": [accuracy_score(y_test, y_pred_lasso), accuracy_score(y_test, y_pred_rf)],
+        "Precision": [precision_score(y_test, y_pred_lasso), precision_score(y_test, y_pred_rf)],
+        "Recall": [recall_score(y_test, y_pred_lasso), recall_score(y_test, y_pred_rf)],
+        "F1-score": [f1_score(y_test, y_pred_lasso), f1_score(y_test, y_pred_rf)],
+        "AUC": [auc_lasso, auc_rf]
+    })
+    st.dataframe(metrics_df.style.format("{:.3f}"))
 
 
 # ======================================================
