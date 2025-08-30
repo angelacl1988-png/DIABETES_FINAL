@@ -94,7 +94,7 @@ with tab1:
         Para este análisis, se combinó la información de diferentes módulos de NHANES en un único registro por paciente, usando la clave única <code>SEQN</code>.<br><br>
         <strong>Módulos incluidos:</strong>
         <ul>
-            <li>Demografía (demo1): edad, sexo, raza, inDICE DE POBREZA/PIR.</li>
+            <li>Demografía (demo1): edad, sexo, raza, índice de pobreza /PIR.</li>
             <li>Examen físico (body1): circunferencia de cintura, IMC.</li>
             <li>Laboratorio de colesterol (tchol).</li>
             <li>Hemograma completo (cbc).</li>
