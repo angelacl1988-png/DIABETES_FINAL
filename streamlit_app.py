@@ -167,29 +167,29 @@ with tab1:
 # TAB 2: Explorador
 with tab2:
 
-    
-        # Total de pacientes
+    # Total de pacientes
     total_pacientes = len(df)
     
-    # Evitar división por 0
     if total_pacientes > 0:
         # -----------------------
-        # Dichotomizar las variables
+        # Diabetes
         # -----------------------
-        df['diabetes_bin'] = df['Diagnóstico médico de diabetes'].astype(str).str.strip().str.lower().eq("sí").astype(int)
-        df['prediabetes_bin'] = df['Diagnóstico médico de prediabetes'].astype(str).str.strip().str.lower().eq("sí").astype(int)
-        df['insulina_bin'] = df['Uso actual de insulina'].astype(str).str.strip().str.lower().eq("sí").astype(int)
-    
-        # -----------------------
-        # Calcular casos y prevalencias
-        # -----------------------
-        casos_diabetes = df['diabetes_bin'].sum()
+        casos_diabetes = df['Diagnóstico médico de diabetes'] \
+            .astype(str).str.strip().str.lower().eq("sí").astype(int).sum()
         prevalencia_diabetes = (casos_diabetes / total_pacientes) * 100
     
-        casos_prediabetes = df['prediabetes_bin'].sum()
+        # -----------------------
+        # Prediabetes
+        # -----------------------
+        casos_prediabetes = df['Diagnóstico médico de prediabetes'] \
+            .astype(str).str.strip().str.lower().eq("sí").astype(int).sum()
         prevalencia_prediabetes = (casos_prediabetes / total_pacientes) * 100
     
-        casos_insulina = df['insulina_bin'].sum()
+        # -----------------------
+        # Uso de insulina
+        # -----------------------
+        casos_insulina = df['Uso actual de insulina'] \
+            .astype(str).str.strip().str.lower().eq("sí").astype(int).sum()
         prevalencia_insulina = (casos_insulina / total_pacientes) * 100
     else:
         casos_diabetes = casos_prediabetes = casos_insulina = 0
