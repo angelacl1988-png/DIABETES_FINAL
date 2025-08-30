@@ -559,46 +559,71 @@ with tab3:
 # TAB 4: Selección de Variables y Comparación de Métodos
 # ======================================================
 with tab4:
-    # ----------------------------
-    # Preparar datos
-    # ----------------------------
-    TARGET_COL = "Diagnóstico médico de diabetes"
+        # ----------------------------
+        # Preparar datos
+        # ----------------------------
+        T#Parámetros + preparación
+    # ===== Config =====
+    TARGET_COLS = ["Diagnóstico médico de diabetes", "Diagnóstico de diabetes (Sí/No)", "Diagnóstico de diabetes (Original)"]
+    TARGET_COL  = "Diagnóstico médico de diabetes"   # la que usarás como y
+    ID_COLS = ["SEQN"]
+    UMBRAL_ACUM = 0.80                 # 80%
+    RANDOM_STATE = 42
+    
+    # 1) Construir X e y SIN ninguna columna objetivo
+    df = df.dropna(subset=[TARGET_COL]).copy()
+    
+    drop_cols = set(ID_COLS) | set(TARGET_COLS)
+    
+    # Separar columnas por tipo según DF previos
+    num_cols = [c for c in df.select_dtypes(include=["int64","float64","int32","float32"]).columns
+                if c not in drop_cols]
+    cat_cols = [c for c in df.select_dtypes(include=["object","category","bool"]).columns
+                if c not in drop_cols]
+    
+    X = df[num_cols + cat_cols].copy()
+    y = df[TARGET_COL].map({"No":0, "Sí":1}).astype(int)
 
-    if TARGET_COL not in df.columns:
-        st.error(f"La columna {TARGET_COL} no está en el dataset")
-    else:
-        df_model = df.dropna(subset=[TARGET_COL])
-        y = LabelEncoder().fit_transform(df_model[TARGET_COL])
-
-        vars_excluir = ["SEQN", "Diagnóstico médico de diabetes", 
-                        "Diagnóstico médico de prediabetes", 
-                        "Uso actual de insulina"]
-        X = df_model.drop(columns=vars_excluir, errors="ignore")
-        X = pd.get_dummies(X, drop_first=True)
-        X = X.fillna(X.median(numeric_only=True))
-
-        total_vars = X.shape[1]  # número total de variables disponibles
-
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.3, stratify=y, random_state=42
-        )
+        # Preprocesador + helper de nombres
+    def build_preprocessor(num_cols, cat_cols, scale_numeric=True):
+        num_steps = [("imputer", SimpleImputer(strategy="median"))]
+        if scale_numeric:
+            num_steps.append(("scaler", StandardScaler()))
+        num_pipe = Pipeline(num_steps)
+    
+        # compatibilidad: sparse_output (>=1.2) vs sparse (<=1.1)
+        ohe_kwargs = {"handle_unknown": "ignore", "drop": None}
+        try:
+            OneHotEncoder(sparse_output=False)
+            ohe_kwargs["sparse_output"] = False
+        except TypeError:
+            ohe_kwargs["sparse"] = False
+    
+        cat_pipe = Pipeline([
+            ("imputer", SimpleImputer(strategy="most_frequent")),
+            ("oh", OneHotEncoder(**ohe_kwargs))
+        ])
+    
+        return ColumnTransformer([
+            ("num", num_pipe, num_cols),
+            ("cat", cat_pipe, cat_cols)
+        ])
+    
+    def get_feature_names(pre, num_cols, cat_cols):
+        names = list(num_cols)
+        oh = pre.named_transformers_["cat"].named_steps["oh"]
+        names += oh.get_feature_names_out(cat_cols).tolist()
+        return names
+    
+    def base_col(name):
+        for c in cat_cols:
+            if name.startswith(c + "_"): return c
+        return name
 
         # ----------------------------
         # RandomForest
         # ----------------------------
-        rf = RandomForestClassifier(n_estimators=500, random_state=42)
-        rf.fit(X_train, y_train)
-        y_pred_rf = rf.predict_proba(X_test)[:, 1]
-
-        fpr_rf, tpr_rf, _ = roc_curve(y_test, y_pred_rf)
-        auc_rf = auc(fpr_rf, tpr_rf)
-
-        import_rf = pd.DataFrame({
-            "Variable": X.columns,
-            "Importancia": rf.feature_importances_,
-            "Método": "RandomForest"
-        }).sort_values("Importancia", ascending=False)
-
+        
         # ----------------------------
         # LASSO
         # ----------------------------
