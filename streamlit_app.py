@@ -161,53 +161,53 @@ with tab2:
         prevalencia = (positivos / total) * 100 if total > 0 else 0
         return prevalencia, positivos, total
     
- # Calcular prevalencias y frecuencias
-prevalencia_diabetes, casos_diabetes, total_diabetes = calcular_prevalencia_y_frecuencia(df, "Diagnóstico médico de diabetes")
-prevalencia_prediabetes, casos_prediabetes, total_prediabetes = calcular_prevalencia_y_frecuencia(df, "Diagnóstico médico de prediabetes")
-prevalencia_insulina, casos_insulina, total_insulina = calcular_prevalencia_y_frecuencia(df, "Uso actual de insulina")
-
-# ============================
-# Diabetes controlada según HbA1c
-# ============================
-if "Hemoglobina HbA1c (%)" in df.columns:
-    df_hba1c = df[df["Hemoglobina HbA1c (%)"].notnull()]
-    total_hba1c = len(df_hba1c)
-
-    casos_no_controlada = (df_hba1c["Hemoglobina HbA1c (%)"] > 7).sum()
-    casos_controlada = total_hba1c - casos_no_controlada
-
-    prevalencia_no_controlada = (casos_no_controlada / total_hba1c * 100) if total_hba1c > 0 else 0
-    prevalencia_controlada = (casos_controlada / total_hba1c * 100) if total_hba1c > 0 else 0
-
-# ============================
-# Mostrar en Streamlit
-# ============================
-col1, col2, col3, col4 = st.columns(4)
-
-with col1:
-    st.metric(
-        label="Prediabetes",
-        value=f"{prevalencia_prediabetes:.2f}%",
-        delta=f"{casos_prediabetes}/{total_prediabetes} casos"
-    )
-with col2:
-    st.metric(
-        label="Diabetes",
-        value=f"{prevalencia_diabetes:.2f}%",
-        delta=f"{casos_diabetes}/{total_diabetes} casos"
-    )
-with col3:
-    st.metric(
-        label="Uso de Insulina",
-        value=f"{prevalencia_insulina:.2f}%",
-        delta=f"{casos_insulina}/{total_insulina} casos"
-    )
-with col4:
-    st.metric(
-        label="Diabéticos NO controlados (HbA1c > 7%)",
-        value=f"{prevalencia_no_controlada:.2f}%",
-        delta=f"{casos_no_controlada}/{total_hba1c} casos"
-    )
+     # Calcular prevalencias y frecuencias
+    prevalencia_diabetes, casos_diabetes, total_diabetes = calcular_prevalencia_y_frecuencia(df, "Diagnóstico médico de diabetes")
+    prevalencia_prediabetes, casos_prediabetes, total_prediabetes = calcular_prevalencia_y_frecuencia(df, "Diagnóstico médico de prediabetes")
+    prevalencia_insulina, casos_insulina, total_insulina = calcular_prevalencia_y_frecuencia(df, "Uso actual de insulina")
+    
+    # ============================
+    # Diabetes controlada según HbA1c
+    # ============================
+    if "Hemoglobina HbA1c (%)" in df.columns:
+        df_hba1c = df[df["Hemoglobina HbA1c (%)"].notnull()]
+        total_hba1c = len(df_hba1c)
+    
+        casos_no_controlada = (df_hba1c["Hemoglobina HbA1c (%)"] > 7).sum()
+        casos_controlada = total_hba1c - casos_no_controlada
+    
+        prevalencia_no_controlada = (casos_no_controlada / total_hba1c * 100) if total_hba1c > 0 else 0
+        prevalencia_controlada = (casos_controlada / total_hba1c * 100) if total_hba1c > 0 else 0
+    
+    # ============================
+    # Mostrar en Streamlit
+    # ============================
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric(
+            label="Prediabetes",
+            value=f"{prevalencia_prediabetes:.2f}%",
+            delta=f"{casos_prediabetes}/{total_prediabetes} casos"
+        )
+    with col2:
+        st.metric(
+            label="Diabetes",
+            value=f"{prevalencia_diabetes:.2f}%",
+            delta=f"{casos_diabetes}/{total_diabetes} casos"
+        )
+    with col3:
+        st.metric(
+            label="Uso de Insulina",
+            value=f"{prevalencia_insulina:.2f}%",
+            delta=f"{casos_insulina}/{total_insulina} casos"
+        )
+    with col4:
+        st.metric(
+            label="Diabéticos NO controlados (HbA1c > 7%)",
+            value=f"{prevalencia_no_controlada:.2f}%",
+            delta=f"{casos_no_controlada}/{total_hba1c} casos"
+        )
 
     
   
