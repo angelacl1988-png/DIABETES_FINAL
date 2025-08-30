@@ -570,7 +570,7 @@ with tab4:
     UMBRAL_ACUM = 0.80
     RANDOM_STATE = 42
     TARGET_COL = "Diagnóstico médico de diabetes"
-    TARGET_COLS = ["Diagnóstico médico de diabetes", "Diagnóstico de diabetes (Sí/No)", "Diagnóstico de diabetes (Original)"]
+    TARGET_COLS = ["Diagnóstico médico de prediabetes","Uso actual de insulina"]
     ID_COLS = ["SEQN"]
 
     # --- Preparar X e y ---
