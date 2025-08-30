@@ -555,35 +555,47 @@ with tab3:
         else:
             st.warning("⚠️ Aún no has corrido el bloque PCA para generar DF_PCA_final.")
 
+
 ## ------------------------------------------------
-# TAB 4: Selección de Variables
+# TAB 4: Selección de Variables (con NHANES)
 # ------------------------------------------------
 with tab4:
-    st.header("⚙️ Selección de Variables")
+    st.header("⚙️ Selección de Variables (NHANES)")
 
     st.markdown("""
-    En esta sección se aplican **tres enfoques diferentes de selección de variables** sobre el conjunto de datos de ejemplo
-    (`Breast Cancer Dataset` de sklearn) para ilustrar cómo identificar las variables más importantes:
+    En esta sección se aplican **tres enfoques diferentes de selección de variables** usando el dataset NHANES filtrado, 
+    con la variable objetivo **Diagnóstico médico de diabetes**:
     
-    1. **Filtrado (SelectKBest con Chi²)**
-    2. **Incrustado (Random Forest feature_importances_)**
-    3. **Envoltura (RFECV con Logistic Regression)**
+    1. **Filtrado (SelectKBest con Chi²)**  
+    2. **Incrustado (Random Forest feature_importances_)**  
+    3. **Envoltura (RFECV con Logistic Regression)**  
     """)
 
-    # --- Cargar datos de ejemplo ---
-    from sklearn.datasets import load_breast_cancer
     from sklearn.feature_selection import SelectKBest, chi2, RFECV
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.linear_model import LogisticRegression
-    from sklearn.preprocessing import StandardScaler
-    from sklearn.pipeline import Pipeline
 
-    data = load_breast_cancer()
-    X = pd.DataFrame(data.data, columns=data.feature_names)
-    y = data.target
+    # --- Preparar datos ---
+    df_model = df.copy()
+
+    # Variable objetivo
+    target = "Diagnóstico médico de diabetes"
+
+    # Eliminar filas con nulos en la variable objetivo
+    df_model = df_model[df_model[target].notnull()]
+
+    # Convertir target a binario (Sí=1, No=0)
+    y = df_model[target].apply(lambda x: 1 if x == "Sí" else 0)
+
+    # Selección de variables predictoras (excluimos identificadores y target)
+    X = df_model.drop(columns=[target, "SEQN"], errors="ignore")
+
+    # Codificar variables categóricas
+    X = pd.get_dummies(X, drop_first=True)
+
     features = X.columns
 
-    # --- 1. Selección por filtrado ---
+    # --- 1. Selección por filtrado (Chi²) ---
     selector = SelectKBest(score_func=chi2, k="all")
     selector.fit(X.abs(), y)
     scores_filter = selector.scores_
@@ -595,8 +607,8 @@ with tab4:
     cutoff_filter = np.searchsorted(cumulative_filter, 0.90) + 1
     selected_filter = sorted_features_filter[:cutoff_filter]
 
-    # --- 2. Incrustado (RandomForest) ---
-    rf = RandomForestClassifier(n_estimators=100, random_state=42)
+    # --- 2. Incrustado (Random Forest) ---
+    rf = RandomForestClassifier(n_estimators=200, random_state=42)
     rf.fit(X, y)
     importances_embedded = rf.feature_importances_
     indices_embedded = np.argsort(importances_embedded)[::-1]
@@ -609,7 +621,7 @@ with tab4:
 
     # --- 3. Envoltura (RFECV con LogisticRegression) ---
     scaler = StandardScaler()
-    model = LogisticRegression(max_iter=1000)
+    model = LogisticRegression(max_iter=1000, solver="liblinear")
     rfecv = RFECV(estimator=model, step=1, cv=5, scoring="accuracy")
     pipeline = Pipeline([("scaler", scaler), ("feature_selection", rfecv)])
     pipeline.fit(X, y)
@@ -624,7 +636,7 @@ with tab4:
 
     # --- Mostrar resultados ---
     st.subheader("📌 Número de variables necesarias para explicar el 90% de la importancia")
-    st.write(f"**Filtrado:** {cutoff_filter} variables")
+    st.write(f"**Filtrado (Chi²):** {cutoff_filter} variables")
     st.write(f"**Incrustado (Random Forest):** {cutoff_embedded} variables")
     st.write(f"**Envoltura (RFECV):** {cutoff_wrap} variables")
 
@@ -640,14 +652,14 @@ with tab4:
         st.write("**Envoltura:**")
         st.write(selected_wrap_90.tolist())
 
-    # --- Graficas comparativas ---
+    # --- Gráficas comparativas ---
     st.subheader("📊 Comparación de métodos de selección")
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
     axes[0].bar(range(len(sorted_scores_filter)), sorted_scores_filter, color="skyblue")
     axes[0].set_xticks(range(len(sorted_features_filter)))
     axes[0].set_xticklabels(sorted_features_filter, rotation=90)
-    axes[0].set_title("Filtrado (SelectKBest chi2)")
+    axes[0].set_title("Filtrado (Chi²)")
     axes[0].axvline(cutoff_filter-1, color="red", linestyle="--", label="90% acumulado")
     axes[0].legend()
 
@@ -666,6 +678,7 @@ with tab4:
     axes[2].legend()
 
     st.pyplot(fig)
+
 
 
 
