@@ -574,22 +574,26 @@ with tab4:
     X = df.drop(columns=vars_excluir, errors="ignore")
     y = df["Diagnóstico médico de diabetes"].map({"Sí":1, "No":0})
 
-    # Numéricas
+    # --- Variables numéricas ---
     X_num = X.select_dtypes(include=[np.number])
     X_num = X_num.loc[:, X_num.isna().mean() <= 0.8]
     from sklearn.impute import SimpleImputer
     imputer_num = SimpleImputer(strategy="median")
-    X_num_imp = pd.DataFrame(imputer_num.fit_transform(X_num), columns=X_num.columns, index=X_num.index)
+    X_num_imp = pd.DataFrame(imputer_num.fit_transform(X_num),
+                             columns=X_num.columns, index=X_num.index)
 
-    # Categóricas
+    # --- Variables categóricas ---
     X_cat = X.select_dtypes(exclude=[np.number]).fillna("Missing").astype(str)
     X_cat_enc = pd.get_dummies(X_cat, drop_first=True)
 
-    # Concatenar
+    # --- Concatenar y verificar ---
     X_all = pd.concat([X_num_imp, X_cat_enc], axis=1)
-    st.write(f"📌 Dataset para selección: {X_all.shape[0]} filas x {X_all.shape[1]} columnas")
+    assert X_all.isna().sum().sum() == 0, "❌ Aún hay valores NaN"
+    assert X_all.dtypes.apply(lambda x: np.issubdtype(x, np.number)).all(), "❌ Hay columnas no numéricas"
 
-    # Split train/test
+    st.write(f"📌 Dataset final: {X_all.shape[0]} filas x {X_all.shape[1]} columnas")
+
+    # --- Split train/test ---
     from sklearn.model_selection import train_test_split
     X_train, X_test, y_train, y_test = train_test_split(
         X_all, y, test_size=0.3, random_state=RANDOM_STATE, stratify=y
@@ -606,6 +610,7 @@ with tab4:
                                      random_state=RANDOM_STATE, max_iter=1000))
     ])
     lasso_pipe.fit(X_train, y_train)
+
     coefs = lasso_pipe.named_steps["lasso"].coef_[0]
     df_coefs = pd.DataFrame({"Variable": X_all.columns, "Coeficiente": coefs})
     df_coefs["AbsCoef"] = df_coefs["Coeficiente"].abs()
@@ -621,6 +626,7 @@ with tab4:
     from sklearn.ensemble import RandomForestClassifier
     rf = RandomForestClassifier(n_estimators=N_ESTIMATORS, random_state=RANDOM_STATE)
     rf.fit(X_train, y_train)
+
     importances = rf.feature_importances_
     df_rf = pd.DataFrame({"Variable": X_all.columns, "Importancia": importances})
     df_rf = df_rf.sort_values("Importancia", ascending=False)
@@ -637,11 +643,6 @@ with tab4:
     st.write(f"Número de variables comunes: {len(comunes)}")
     st.dataframe(pd.DataFrame({"Variable": comunes}))
 
-    # --- Botón para guardar resultados ---
-    if st.button("💾 Guardar resultados en CSV"):
-        df_coefs.to_csv("seleccion_variables_lasso.csv", index=False)
-        df_rf.to_csv("seleccion_variables_rf.csv", index=False)
-        st.success("✅ Archivos guardados: `seleccion_variables_lasso.csv` y `seleccion_variables_rf.csv`")
 
 
 
