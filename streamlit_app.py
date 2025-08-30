@@ -173,17 +173,17 @@ with tab2:
     # Cálculo de prevalencias
     # ============================
     
-    total_diabetes = len(filtered_df)
+    total_diabetes = len("Diagnóstico médico de diabetes")
     casos_diabetes = (filtered_df["Diagnóstico médico de diabetes"] == "Sí").sum()
-    prevalencia_diabetes = (casos_diabetes / total_diabetes * 100) if total_diabetes > 0 else 0
+    prevalencia_diabetes = (casos_diabetes / total_diabetes * 100)
     
     total_prediabetes = len(filtered_df)
     casos_prediabetes = (filtered_df["Diagnóstico médico de prediabetes"] == "Sí").sum()
-    prevalencia_prediabetes = (casos_prediabetes / total_prediabetes * 100) if total_prediabetes > 0 else 0
+    prevalencia_prediabetes = (casos_prediabetes / total_prediabetes * 100) 
     
     total_insulina = len(filtered_df)
     casos_insulina = (filtered_df["Uso actual de insulina"] == "Sí").sum()
-    prevalencia_insulina = (casos_insulina / total_insulina * 100) if total_insulina > 0 else 0
+    prevalencia_insulina = (casos_insulina / total_insulina * 100)
     
     # ============================
     # Métricas en columnas
