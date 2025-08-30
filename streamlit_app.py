@@ -590,7 +590,7 @@ with tab4:
 
     ### Selección de variables y cobertura del 90% de la importancia
 
-import streamlit as st
+    import streamlit as st
 
     st.markdown("""
     ### Selección de variables y cobertura del 90% de la importancia
