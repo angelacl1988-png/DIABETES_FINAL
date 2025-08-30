@@ -555,217 +555,122 @@ with tab3:
         else:
             st.warning("⚠️ Aún no has corrido el bloque PCA para generar DF_PCA_final.")
 
-# TAB 4 - Selección de Variables
-# ==============================
-from sklearn.linear_model import LassoCV, LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import roc_curve, auc, accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
-from sklearn.model_selection import train_test_split
-
+# ======================================================
+# TAB 4: Selección de variables (RF vs LASSO)
+# ======================================================
 with tab4:
-    st.subheader("📌 Selección de Variables: LASSO vs Random Forest")
+    st.header("📌 Selección de Variables (Random Forest vs LASSO)")
 
+    # --- Preparación de datos ---
     TARGET_COL = "Diagnóstico médico de diabetes"
+    X = df.drop(columns=["SEQN", TARGET_COL, "Diagnóstico médico de prediabetes", "Uso actual de insulina"], errors="ignore")
+    y = (df[TARGET_COL] == "Sí").astype(int)  # objetivo binario 0/1
 
-    # --- Preparar dataset ---
-    X = df.drop(columns=["SEQN", "Diagnóstico médico de prediabetes", "Uso actual de insulina"], errors="ignore")
-    y = df[TARGET_COL].map({"Sí": 1, "No": 0})
+    # Separar numéricas y categóricas
+    X_num = X.select_dtypes(include=[np.number])
+    X_cat = X.select_dtypes(exclude=[np.number])
+    X_cat = pd.get_dummies(X_cat, drop_first=True)
 
-    # Codificar categóricas
-    X_encoded = pd.get_dummies(X.drop(columns=[TARGET_COL], errors="ignore"), drop_first=True)
+    X_imp = pd.concat([X_num, X_cat], axis=1).fillna(0)
 
-    # Split train-test
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_encoded, y, test_size=0.3, random_state=42, stratify=y
-    )
+    # --- Random Forest para selección ---
+    rf = RandomForestClassifier(n_estimators=300, random_state=42)
+    rf.fit(X_imp, y)
+    importances = pd.Series(rf.feature_importances_, index=X_imp.columns)
+    importances = importances.sort_values(ascending=False)
 
-    # --- Imputación y escalado ---
-    from sklearn.preprocessing import StandardScaler
-    from sklearn.impute import SimpleImputer
+    # Selección por 80% importancia acumulada
+    threshold = 0.80
+    cum_imp = importances.cumsum()
+    sel_rf = importances[cum_imp <= threshold]
+    X_rf = X_imp[sel_rf.index]
 
-    imputer = SimpleImputer(strategy="median")
-    scaler = StandardScaler()
+    # --- Logistic L1 para selección ---
+    lasso = LogisticRegression(penalty="l1", solver="liblinear", max_iter=500, random_state=42)
+    lasso.fit(X_imp, y)
+    coef = pd.Series(lasso.coef_[0], index=X_imp.columns)
+    sel_l1 = coef[coef != 0]
+    X_l1 = X_imp[sel_l1.index]
 
-    X_train_imp = imputer.fit_transform(X_train)
-    X_test_imp = imputer.transform(X_test)
+    # --- Comparación de AUC con validación ---
+    from sklearn.model_selection import cross_val_score
+    def eval_auc(model, X, y):
+        return cross_val_score(model, X, y, cv=5, scoring="roc_auc").mean()
 
-    X_train_scaled = scaler.fit_transform(X_train_imp)
-    X_test_scaled = scaler.transform(X_test_imp)
+    auc_rf = eval_auc(RandomForestClassifier(n_estimators=300, random_state=42), X_rf, y)
+    auc_l1 = eval_auc(LogisticRegression(solver="liblinear", penalty="l1"), X_l1, y)
 
-    # === LASSO ===
-    lasso = LassoCV(cv=5, random_state=42, max_iter=10000)
-    lasso.fit(X_train_scaled, y_train)
+    auc_df = pd.DataFrame({
+        "Método": ["Random Forest (80%)", "Logistic LASSO"],
+        "Variables Seleccionadas": [X_rf.shape[1], X_l1.shape[1]],
+        "AUC (5-fold)": [auc_rf, auc_l1]
+    })
 
-    coef = pd.Series(lasso.coef_, index=X_encoded.columns)
-    lasso_vars = coef[coef != 0].sort_values(key=abs, ascending=False)
+    st.subheader("📊 Comparación de Selección de Variables")
+    st.dataframe(auc_df.style.format({"AUC (5-fold)": "{:.3f}"}))
 
-    st.markdown("### 🔎 Variables seleccionadas por **LASSO**")
-    st.dataframe(lasso_vars.head(20))
+    # --- Gráfico comparativo ---
+    fig, ax = plt.subplots(figsize=(6,4))
+    bars = ax.bar(auc_df["Método"], auc_df["AUC (5-fold)"], color=["#4daf4a", "#377eb8"])
+    ax.set_ylim(0, 1)
+    ax.set_ylabel("AUC promedio (5-fold)")
+    ax.set_title("Comparación RF vs LASSO")
 
-    fig_lasso = px.bar(
-        lasso_vars.head(15).sort_values(),
-        x=lasso_vars.head(15).sort_values().values,
-        y=lasso_vars.head(15).sort_values().index,
-        orientation="h",
-        title="Top 15 coeficientes distintos de cero (LASSO)",
-        color=lasso_vars.head(15).abs().values,
-        color_continuous_scale="Viridis"
-    )
-    st.plotly_chart(fig_lasso, use_container_width=True)
+    for b, v in zip(bars, auc_df["AUC (5-fold)"]):
+        ax.text(b.get_x()+b.get_width()/2, v+0.01, f"{v:.3f}", ha="center")
+    st.pyplot(fig)
 
-    # === Random Forest ===
-    rf = RandomForestClassifier(n_estimators=500, random_state=42)
-    rf.fit(X_train_imp, y_train)
+    # --- Guardar datasets y ganador ---
+    best_method = "RF" if auc_rf >= auc_l1 else "LASSO"
+    DF_sel_final = X_rf if best_method == "RF" else X_l1
+    DF_sel_final.insert(0, TARGET_COL, y.values)
 
-    importancias = pd.Series(rf.feature_importances_, index=X_encoded.columns)
-    rf_vars = importancias.sort_values(ascending=False)
-
-    st.markdown("### 🔎 Importancia de variables según **Random Forest**")
-    st.dataframe(rf_vars.head(20))
-
-    fig_rf = px.bar(
-        rf_vars.head(15).sort_values(),
-        x=rf_vars.head(15).sort_values().values,
-        y=rf_vars.head(15).sort_values().index,
-        orientation="h",
-        title="Top 15 variables más importantes (Random Forest)",
-        color=rf_vars.head(15).values,
-        color_continuous_scale="Plasma"
-    )
-    st.plotly_chart(fig_rf, use_container_width=True)
-
-    # === Comparación directa ===
-    st.subheader("📊 Comparación LASSO vs RF")
-    comparacion = pd.DataFrame({
-        "LASSO (|coef|)": lasso_vars.reindex(X_encoded.columns).abs(),
-        "Random Forest (importancia)": rf_vars.reindex(X_encoded.columns)
-    }).fillna(0)
-
-    fig_comp = px.scatter(
-        comparacion,
-        x="LASSO (|coef|)",
-        y="Random Forest (importancia)",
-        text=comparacion.index,
-        size="Random Forest (importancia)",
-        opacity=0.7,
-        title="Comparación de importancia de variables: LASSO vs Random Forest"
-    )
-    st.plotly_chart(fig_comp, use_container_width=True)
-
-    # === Evaluación con curva ROC y métricas ===
-    st.subheader("📈 Comparación de desempeño")
-
-    # --- LASSO como regresión logística ---
-    log_reg = LogisticRegression(max_iter=10000)
-    X_train_sel = X_train_scaled[:, coef != 0]
-    X_test_sel = X_test_scaled[:, coef != 0]
-
-    log_reg.fit(X_train_sel, y_train)
-    y_pred_lasso = log_reg.predict(X_test_sel)
-    y_prob_lasso = log_reg.predict_proba(X_test_sel)[:, 1]
-
-    # --- Random Forest ---
-    y_pred_rf = rf.predict(X_test_imp)
-    y_prob_rf = rf.predict_proba(X_test_imp)[:, 1]
-
-    # --- Curva ROC ---
-    fpr_lasso, tpr_lasso, _ = roc_curve(y_test, y_prob_lasso)
-    fpr_rf, tpr_rf, _ = roc_curve(y_test, y_prob_rf)
-
-    fig_roc = go.Figure()
-    fig_roc.add_trace(go.Scatter(x=fpr_lasso, y=tpr_lasso, mode="lines", name=f"LASSO (AUC={auc(fpr_lasso,tpr_lasso):.3f})"))
-    fig_roc.add_trace(go.Scatter(x=fpr_rf, y=tpr_rf, mode="lines", name=f"Random Forest (AUC={auc(fpr_rf,tpr_rf):.3f})"))
-    fig_roc.add_trace(go.Scatter(x=[0,1], y=[0,1], mode="lines", name="Azar", line=dict(dash="dash")))
-    fig_roc.update_layout(title="Curva ROC - LASSO vs Random Forest", xaxis_title="False Positive Rate", yaxis_title="True Positive Rate")
-    st.plotly_chart(fig_roc, use_container_width=True)
-
-    # --- Métricas ---
-    metrics_df = pd.DataFrame({
-        "Accuracy": [
-            accuracy_score(y_test, y_pred_lasso),
-            accuracy_score(y_test, y_pred_rf)
-        ],
-        "Precision": [
-            precision_score(y_test, y_pred_lasso),
-            precision_score(y_test, y_pred_rf)
-        ],
-        "Recall": [
-            recall_score(y_test, y_pred_lasso),
-            recall_score(y_test, y_pred_rf)
-        ],
-        "F1-Score": [
-            f1_score(y_test, y_pred_lasso),
-            f1_score(y_test, y_pred_rf)
-        ],
-        "ROC AUC": [
-            roc_auc_score(y_test, y_prob_lasso),
-            roc_auc_score(y_test, y_prob_rf)
-        ]
-    }, index=["LASSO", "Random Forest"])
-
-    st.dataframe(metrics_df)  # <- ✅ ahora funciona sin Styler
+    DF_sel_final.to_csv("seleccion_variables_ganador.csv", index=False)
+    st.success(f"✅ Mejor método: **{best_method}** con AUC={max(auc_rf, auc_l1):.3f}")
+    st.info(f"Dataset guardado como **seleccion_variables_ganador.csv** con shape {DF_sel_final.shape}")
 
 
 # ======================================================
-# TAB 5: Comparación PCA vs RandomForest
+# TAB 5: Comparación PCA+MCA vs Selección de Variables
 # ======================================================
 with tab5:
-    st.subheader("📊 Comparación PCA vs RandomForest")
+    st.header("📌 Comparación PCA+MCA vs Selección de Variables")
 
-    if 'DF_PCA_final' not in locals():
-        st.warning("⚠️ Primero ejecuta el bloque PCA (TAB 3) para generar DF_PCA_final.")
-    else:
-        # Preparar datos PCA
-        X_pca = DF_PCA_final.drop(columns=[TARGET_COL])
-        y_pca = LabelEncoder().fit_transform(DF_PCA_final[TARGET_COL])
-        X_train_pca, X_test_pca, y_train_pca, y_test_pca = train_test_split(
-            X_pca, y_pca, test_size=0.3, stratify=y_pca, random_state=42
-        )
+    # Cargar datasets de Tab3 y Tab4
+    try:
+        df_pca_mca = pd.read_csv("pca_mca_concat.csv")
+        df_sel_final = pd.read_csv("seleccion_variables_ganador.csv")
 
-        rf_pca = RandomForestClassifier(n_estimators=500, random_state=42)
-        rf_pca.fit(X_train_pca, y_train_pca)
-        y_pred_pca = rf_pca.predict_proba(X_test_pca)[:, 1]
+        # Evaluar AUC
+        X_pca_mca = df_pca_mca.drop(columns=[TARGET_COL])
+        y_pca_mca = (df_pca_mca[TARGET_COL] == "Sí").astype(int)
 
-        fpr_pca, tpr_pca, _ = roc_curve(y_test_pca, y_pred_pca)
-        auc_pca = auc(fpr_pca, tpr_pca)
+        X_sel = df_sel_final.drop(columns=[TARGET_COL])
+        y_sel = df_sel_final[TARGET_COL]
 
-        # RandomForest original (usando todas las variables)
-        X_rf = X
-        y_rf = y
-        X_train_rf, X_test_rf, y_train_rf, y_test_rf = train_test_split(
-            X_rf, y_rf, test_size=0.3, stratify=y_rf, random_state=42
-        )
-        rf_full = RandomForestClassifier(n_estimators=500, random_state=42)
-        rf_full.fit(X_train_rf, y_train_rf)
-        y_pred_rf = rf_full.predict_proba(X_test_rf)[:, 1]
+        auc_pca_mca = eval_auc(LogisticRegression(max_iter=500), X_pca_mca, y_pca_mca)
+        auc_sel = eval_auc(LogisticRegression(max_iter=500), X_sel, y_sel)
 
-        fpr_rf, tpr_rf, _ = roc_curve(y_test_rf, y_pred_rf)
-        auc_rf = auc(fpr_rf, tpr_rf)
+        comp_df = pd.DataFrame({
+            "Método": ["PCA+MCA", f"Selección ({best_method})"],
+            "AUC (5-fold)": [auc_pca_mca, auc_sel]
+        })
 
-        # ----------------------------
-        # Curva ROC comparativa
-        # ----------------------------
-        fig_roc = go.Figure()
-        fig_roc.add_trace(go.Scatter(x=fpr_rf, y=tpr_rf, mode="lines",
-                                     name=f"RandomForest (Todas las vars, AUC={auc_rf:.3f})"))
-        fig_roc.add_trace(go.Scatter(x=fpr_pca, y=tpr_pca, mode="lines",
-                                     name=f"PCA (Componentes, AUC={auc_pca:.3f})"))
-        fig_roc.add_trace(go.Scatter(x=[0,1], y=[0,1], mode="lines",
-                                     line=dict(dash="dash", color="gray"), showlegend=False))
-        fig_roc.update_layout(title="ROC: PCA vs RandomForest",
-                              xaxis_title="1 - Especificidad (FPR)",
-                              yaxis_title="Sensibilidad (TPR)",
-                              template="plotly_white")
-        st.plotly_chart(fig_roc, use_container_width=True)
+        st.subheader("📊 Resultados comparativos")
+        st.dataframe(comp_df.style.format({"AUC (5-fold)": "{:.3f}"}))
 
-        # ----------------------------
-        # Resumen y ganador
-        # ----------------------------
-        ganador_final = "RandomForest" if auc_rf >= auc_pca else "PCA"
-        st.write(f"**AUC PCA:** {auc_pca:.3f}")
-        st.write(f"**AUC RandomForest:** {auc_rf:.3f}")
-        st.success(f"🏆 Método ganador según AUC: **{ganador_final}**")
+        # Gráfico comparativo
+        fig, ax = plt.subplots(figsize=(6,4))
+        bars = ax.bar(comp_df["Método"], comp_df["AUC (5-fold)"], color=["#ff7f00", "#984ea3"])
+        ax.set_ylim(0, 1)
+        ax.set_ylabel("AUC promedio (5-fold)")
+        ax.set_title("PCA+MCA vs Selección de Variables")
 
-        
+        for b, v in zip(bars, comp_df["AUC (5-fold)"]):
+            ax.text(b.get_x()+b.get_width()/2, v+0.01, f"{v:.3f}", ha="center")
+        st.pyplot(fig)
 
+        st.success(f"✅ El mejor resultado global es: **{'Selección de Variables' if auc_sel > auc_pca_mca else 'PCA+MCA'}**")
 
+    except FileNotFoundError:
+        st.warning("⚠️ Aún no has generado ambos datas
