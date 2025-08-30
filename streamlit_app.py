@@ -560,6 +560,9 @@ with tab3:
 # ======================================================
 # TAB 4: Selección de Variables
 # ======================================================
+# ======================================================
+# TAB 4: Selección de Variables
+# ======================================================
 with tab4:
     st.title("Selección de Variables: Random Forest vs L1 Logistic Regression")
 
@@ -585,7 +588,14 @@ with tab4:
             num_steps.append(("scaler", StandardScaler()))
         num_pipe = Pipeline(num_steps)
 
-        ohe_kwargs = {"handle_unknown": "ignore", "sparse_output": False}
+        # Compatibilidad scikit-learn >=1.2 y <=1.1
+        ohe_kwargs = {"handle_unknown": "ignore"}
+        try:
+            OneHotEncoder(sparse_output=False)
+            ohe_kwargs["sparse_output"] = False
+        except TypeError:
+            ohe_kwargs["sparse"] = False
+
         cat_pipe = Pipeline([
             ("imputer", SimpleImputer(strategy="most_frequent")),
             ("oh", OneHotEncoder(**ohe_kwargs))
@@ -596,7 +606,7 @@ with tab4:
             ("cat", cat_pipe, cat_cols)
         ])
 
-    # Función para obtener nombres de variables después del preprocesamiento
+    # Función para obtener nombres de features tras preprocesamiento
     def get_feature_names(pre, num_cols, cat_cols):
         names = list(num_cols)
         oh = pre.named_transformers_["cat"].named_steps["oh"]
@@ -656,7 +666,7 @@ with tab4:
     st.success(f"[L1] {len(orig_sel_l1)} variables seleccionadas → tarea2_variables_seleccionadas_L1.csv")
 
     # ======================================================
-    # Comparación de métodos (top 20 variables)
+    # Comparación de métodos (Top 20 variables)
     # ======================================================
     import plotly.express as px
     df_top_rf = df_imp_rf.head(20).copy(); df_top_rf["Método"] = "RF"
@@ -670,9 +680,10 @@ with tab4:
         color="Método",
         orientation="h",
         barmode="group",
-        title="Top 20 variables según Random Forest vs L1 Logistic"
+        title="Top 20 variables según Random Forest vs L1 Logistic Regression"
     )
     st.plotly_chart(fig, use_container_width=True)
+
 
 # ======================================================
 # TAB 5: Comparación PCA vs RandomForest
