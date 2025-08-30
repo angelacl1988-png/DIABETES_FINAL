@@ -180,7 +180,7 @@ with tab2:
     total_pacientes = len(df)
     
     # Evitar dividir por 0
-    if total_pacientes > 0:
+ 
         # Diabetes
         casos_diabetes = (filtered_df["Diagnóstico médico de diabetes"] == "Sí").sum()
         prevalencia_diabetes = (casos_diabetes / total_pacientes) * 100
@@ -192,9 +192,6 @@ with tab2:
         # Uso de insulina
         casos_insulina = (filtered_df["Uso actual de insulina"] == "Sí").sum()
         prevalencia_insulina = (casos_insulina / total_pacientes) * 100
-    else:
-        casos_diabetes = casos_prediabetes = casos_insulina = 0
-        prevalencia_diabetes = prevalencia_prediabetes = prevalencia_insulina = 0
     
 
     
