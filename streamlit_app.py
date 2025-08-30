@@ -85,30 +85,29 @@ import plotly.graph_objects as go
 with tab1:
     # === Texto introductorio en recuadro claro con letra oscura ===
     
-    st.markdown("""
-    <div style="background-color:#f9f9f9; padding:20px; border-radius:10px; color:#1a1a1a;">
-        <strong>NHANES:</strong> El <strong>National Health and Nutrition Examination Survey (NHANES)</strong> es un programa de estudios de salud realizado por el <em>National Center for Health Statistics (NCHS)</em> de los <em>Centers for Disease Control and Prevention (CDC)</em> de Estados Unidos.<br><br>
-        Su objetivo es evaluar el estado de salud y nutrición de la población estadounidense mediante un diseño muestral representativo a nivel nacional.<br><br>
-        El estudio combina una <strong>entrevista en el hogar</strong> con un <strong>examen físico y pruebas de laboratorio</strong> realizados en un <em>Mobile Examination Center (MEC)</em>.<br><br>
-        <hr>
-        Para este análisis, se combinó la información de diferentes módulos de NHANES en un único registro por paciente, usando la clave única <code>SEQN</code>.<br><br>
-        <strong>Módulos incluidos:</strong>
-        <ul>
-            <li>Demografía (demo1): edad, sexo, raza, índice de pobreza /PIR.</li>
-            <li>Examen físico (body1): circunferencia de cintura, IMC.</li>
-            <li>Laboratorio de colesterol (tchol).</li>
-            <li>Hemograma completo (cbc).</li>
-            <li>Insulina (ins).</li>
-            <li>Glucosa (glu).</li>
-            <li>Presión arterial y antecedentes (bpq).</li>
-            <li>Diagnóstico de diabetes (diq).</li>
-        </ul>
-        Esto permite analizar de manera integrada datos demográficos, medidas físicas, resultados de laboratorio y cuestionarios médicos de cada paciente.
-        </ul>
-       <strong> <em>**  Este dashboard tiene como propósito explorar los datos de NHANES y analizar de manera interactiva cuáles variables demográficas, clínicas, 
-        de laboratorio y de estilo de vida están asociadas con la diabetes. Permite visualizar patrones, comparar subgrupos y facilitar la identificación de factores de riesgo potenciales,**<em><strong>
-    </div>
-    """, unsafe_allow_html=True)
+   st.markdown("""
+<div style="background-color:#2f2f2f; padding:20px; border-radius:10px; color:#f5f5f5;">
+    <strong>NHANES:</strong> El <strong>National Health and Nutrition Examination Survey (NHANES)</strong> es un programa de estudios de salud realizado por el <em>National Center for Health Statistics (NCHS)</em> de los <em>Centers for Disease Control and Prevention (CDC)</em> de Estados Unidos.<br><br>
+    Su objetivo es evaluar el estado de salud y nutrición de la población estadounidense mediante un diseño muestral representativo a nivel nacional.<br><br>
+    El estudio combina una <strong>entrevista en el hogar</strong> con un <strong>examen físico y pruebas de laboratorio</strong> realizados en un <em>Mobile Examination Center (MEC)</em>.<br><br>
+    <hr style="border-color:#555;">
+    Para este análisis, se combinó la información de diferentes módulos de NHANES en un único registro por paciente, usando la clave única <code>SEQN</code>.<br><br>
+    <strong>Módulos incluidos:</strong>
+    <ul>
+        <li>Demografía (demo1): edad, sexo, raza, índice de pobreza /PIR.</li>
+        <li>Examen físico (body1): circunferencia de cintura, IMC.</li>
+        <li>Laboratorio de colesterol (tchol).</li>
+        <li>Hemograma completo (cbc).</li>
+        <li>Insulina (ins).</li>
+        <li>Glucosa (glu).</li>
+        <li>Presión arterial y antecedentes (bpq).</li>
+        <li>Diagnóstico de diabetes (diq).</li>
+    </ul>
+    Esto permite analizar de manera integrada datos demográficos, medidas físicas, resultados de laboratorio y cuestionarios médicos de cada paciente.<br><br>
+    <strong><em>Este dashboard tiene como propósito explorar los datos de NHANES y analizar de manera interactiva cuáles variables demográficas, clínicas, de laboratorio y de estilo de vida están asociadas con la diabetes. Permite visualizar patrones, comparar subgrupos y facilitar la identificación de factores de riesgo potenciales.</em></strong>
+</div>
+""", unsafe_allow_html=True)
+
 
   
 
