@@ -616,13 +616,6 @@ import streamlit as st
     """)
 
 
-✅ **Interpretación global:**  
-- El método **Chi² (filtrado)** es más restrictivo, seleccionando muy pocas variables clave.  
-- El método **Random Forest (incrustado)** considera interacciones complejas y requiere más variables.  
-- El **RFECV (envoltura)** busca un equilibrio entre simplicidad y rendimiento del modelo.  
-
-La elección final del conjunto de variables dependerá del **objetivo del estudio**: si se busca **simplicidad y explicabilidad**, conviene usar un método filtrado; si se prioriza **precisión predictiva**, los métodos incrustados o de envoltura suelen ser más adecuados.
-
     # --- Preprocesamiento ---
     TARGET_COL = "Diagnóstico médico de diabetes"
     vars_excluir = ["SEQN", "Diagnóstico médico de prediabetes", "Uso actual de insulina"]
