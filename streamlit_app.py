@@ -556,58 +556,49 @@ with tab3:
             st.warning("⚠️ Aún no has corrido el bloque PCA para generar DF_PCA_final.")
 
 
-# ======================================================
-# TAB 4: Selección de Variables Interactiva
-# ======================================================
 with tab4:
-    st.header("Selección de Variables Interactiva - LASSO y Random Forest")
+    st.header("Selección de Variables - LASSO y Random Forest")
 
-    # Parámetros interactivos
     RANDOM_STATE = 42
-    st.sidebar.subheader("🔧 Parámetros de Selección")
     UMBRAL_ACUM = st.sidebar.slider("Umbral acumulado para selección de variables", 0.5, 0.99, 0.8, 0.01)
     N_ESTIMATORS = st.sidebar.slider("Número de árboles Random Forest", 100, 1000, 500, 50)
 
-    # --- Preparar datos ---
-    vars_excluir = ["SEQN", "Diagnóstico médico de diabetes", 
-                    "Diagnóstico médico de prediabetes", "Uso actual de insulina"]
+    # Filtrar columnas y target
+    vars_excluir = ["SEQN","Diagnóstico médico de diabetes","Diagnóstico médico de prediabetes","Uso actual de insulina"]
     X = df.drop(columns=vars_excluir, errors="ignore")
     y = df["Diagnóstico médico de diabetes"].map({"Sí":1, "No":0})
 
-    # --- Variables numéricas ---
+    # Numéricas
     X_num = X.select_dtypes(include=[np.number])
     X_num = X_num.loc[:, X_num.isna().mean() <= 0.8]
-    from sklearn.impute import SimpleImputer
-    imputer_num = SimpleImputer(strategy="median")
-    X_num_imp = pd.DataFrame(imputer_num.fit_transform(X_num),
-                             columns=X_num.columns, index=X_num.index)
+    X_num = X_num.fillna(X_num.median())
 
-    # --- Variables categóricas ---
+    # Categóricas
     X_cat = X.select_dtypes(exclude=[np.number]).fillna("Missing").astype(str)
     X_cat_enc = pd.get_dummies(X_cat, drop_first=True)
 
-    # --- Concatenar y verificar ---
-    X_all = pd.concat([X_num_imp, X_cat_enc], axis=1)
-    assert X_all.isna().sum().sum() == 0, "❌ Aún hay valores NaN"
-    assert X_all.dtypes.apply(lambda x: np.issubdtype(x, np.number)).all(), "❌ Hay columnas no numéricas"
+    # Concatenar
+    X_all = pd.concat([X_num, X_cat_enc], axis=1)
+
+    # Eliminar filas con NaN residual (solo para seguridad)
+    X_all = X_all.dropna()
+    y = y.loc[X_all.index]
 
     st.write(f"📌 Dataset final: {X_all.shape[0]} filas x {X_all.shape[1]} columnas")
 
-    # --- Split train/test ---
+    # Split
     from sklearn.model_selection import train_test_split
     X_train, X_test, y_train, y_test = train_test_split(
         X_all, y, test_size=0.3, random_state=RANDOM_STATE, stratify=y
     )
 
-    # --- LASSO (LogisticRegression L1) ---
+    # LASSO
     from sklearn.linear_model import LogisticRegression
     from sklearn.preprocessing import StandardScaler
     from sklearn.pipeline import Pipeline
-
     lasso_pipe = Pipeline([
         ("scaler", StandardScaler()),
-        ("lasso", LogisticRegression(penalty="l1", solver="liblinear",
-                                     random_state=RANDOM_STATE, max_iter=1000))
+        ("lasso", LogisticRegression(penalty="l1", solver="liblinear", random_state=RANDOM_STATE, max_iter=1000))
     ])
     lasso_pipe.fit(X_train, y_train)
 
@@ -615,14 +606,14 @@ with tab4:
     df_coefs = pd.DataFrame({"Variable": X_all.columns, "Coeficiente": coefs})
     df_coefs["AbsCoef"] = df_coefs["Coeficiente"].abs()
     df_coefs = df_coefs.sort_values("AbsCoef", ascending=False)
-    df_coefs["VarAcum"] = df_coefs["AbsCoef"].cumsum() / df_coefs["AbsCoef"].sum()
-    seleccionadas_lasso = df_coefs[df_coefs["VarAcum"] <= UMBRAL_ACUM]["Variable"].tolist()
+    df_coefs["VarAcum"] = df_coefs["AbsCoef"].cumsum()/df_coefs["AbsCoef"].sum()
+    seleccionadas_lasso = df_coefs[df_coefs["VarAcum"]<=UMBRAL_ACUM]["Variable"].tolist()
 
-    st.subheader("✅ Variables seleccionadas por LASSO (L1)")
-    st.write(f"Número de variables seleccionadas: {len(seleccionadas_lasso)}")
+    st.subheader("Variables seleccionadas por LASSO (L1)")
+    st.write(f"Número: {len(seleccionadas_lasso)}")
     st.dataframe(df_coefs.head(20))
 
-    # --- Random Forest ---
+    # Random Forest
     from sklearn.ensemble import RandomForestClassifier
     rf = RandomForestClassifier(n_estimators=N_ESTIMATORS, random_state=RANDOM_STATE)
     rf.fit(X_train, y_train)
@@ -631,16 +622,16 @@ with tab4:
     df_rf = pd.DataFrame({"Variable": X_all.columns, "Importancia": importances})
     df_rf = df_rf.sort_values("Importancia", ascending=False)
     df_rf["VarAcum"] = df_rf["Importancia"].cumsum()
-    seleccionadas_rf = df_rf[df_rf["VarAcum"] <= UMBRAL_ACUM]["Variable"].tolist()
+    seleccionadas_rf = df_rf[df_rf["VarAcum"]<=UMBRAL_ACUM]["Variable"].tolist()
 
-    st.subheader(f"✅ Variables seleccionadas por Random Forest ({N_ESTIMATORS} árboles)")
-    st.write(f"Número de variables seleccionadas: {len(seleccionadas_rf)}")
+    st.subheader(f"Variables seleccionadas por Random Forest")
+    st.write(f"Número: {len(seleccionadas_rf)}")
     st.dataframe(df_rf.head(20))
 
-    # --- Variables comunes ---
+    # Variables comunes
     comunes = list(set(seleccionadas_lasso).intersection(set(seleccionadas_rf)))
-    st.subheader("🔹 Variables seleccionadas por ambos métodos")
-    st.write(f"Número de variables comunes: {len(comunes)}")
+    st.subheader("Variables seleccionadas por ambos métodos")
+    st.write(f"Número: {len(comunes)}")
     st.dataframe(pd.DataFrame({"Variable": comunes}))
 
 
