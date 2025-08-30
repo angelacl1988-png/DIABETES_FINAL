@@ -148,6 +148,21 @@ with tab1:
     )
     st.plotly_chart(fig_na, use_container_width=True)
 
+    st.markdown(
+        """
+        ### Observaciones sobre los datos  
+        
+        Se encontró que las variables con mayor cantidad de valores perdidos (>80%) fueron:  
+        - **Duración de estancia en EEUU**  
+        - **Uso actual de insulina**  
+        
+        Sin embargo, esta última variable depende de si el paciente es diabético, lo cual justifica la cantidad de valores perdidos.  
+    
+        Más adelante, estas variables serán eliminadas como parte del proceso de **reducción de dimensiones** y **selección de variables**.
+        """
+    )
+    
+
 
 ## ------------------------------------------------
 # TAB 2: Explorador
