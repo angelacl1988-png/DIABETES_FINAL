@@ -91,9 +91,20 @@ with tab1:
         El estudio combina una <strong>entrevista en el hogar</strong> —en la que se recogen datos demográficos, socioeconómicos, dietarios y de salud— con un <strong>examen físico y pruebas de laboratorio</strong> realizados en un <em>Mobile Examination Center (MEC)</em>, que es una unidad clínica móvil equipada para realizar evaluaciones estandarizadas.<br><br>
         Los datos se recogen de manera continua y se publican en ciclos de <strong>dos años</strong>, lo que permite analizar tendencias en salud a lo largo del tiempo. NHANES incluye participantes de todas las edades y etnias, y sus resultados son ampliamente utilizados para la <strong>vigilancia epidemiológica</strong>, la <strong>investigación clínica</strong> y la <strong>formulación de políticas públicas en salud</strong>.
 
-    </div>
-    """, unsafe_allow_html=True)
-
+    Para este análisis, se combinó la información de diferentes módulos de NHANES en un único registro por paciente, usando la clave única `SEQN`.  
+    
+    **Módulos incluidos:**
+    - **Demografía (demo1):** edad, sexo, raza, ingresos.  
+    - **Examen físico (body1):** peso, talla, IMC.  
+    - **Laboratorio de colesterol (tchol).**  
+    - **Hemograma completo (cbc).**  
+    - **Insulina (ins).**  
+    - **Glucosa (glu).**  
+    - **Presión arterial y antecedentes (bpq).**  
+    - **Diagnóstico de diabetes (diq).**  
+    
+    Esto permite analizar de manera integrada datos demográficos, medidas físicas, resultados de laboratorio y cuestionarios médicos de cada paciente.
+    """)
 
   
 
