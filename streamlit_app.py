@@ -188,6 +188,10 @@ with tab2:
         # Prediabetes
         casos_prediabetes = (filtered_df["Diagnóstico médico de prediabetes"] == "Sí").sum()
         prevalencia_prediabetes = (casos_prediabetes / total_pacientes) * 100
+
+        casos_diabetes = (filtered_df["Diagnóstico médico de diabetes"] == "Sí").sum()
+        
+        print(f"Número de casos 'Sí': {casos_diabetes}")
     
         # Uso de insulina
         casos_insulina = (filtered_df["Uso actual de insulina"] == "Sí").sum()
