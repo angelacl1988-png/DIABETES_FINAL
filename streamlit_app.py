@@ -556,85 +556,99 @@ with tab3:
             st.warning("⚠️ Aún no has corrido el bloque PCA para generar DF_PCA_final.")
 
 
+# TAB 4 - Selección de Variables
+# ==============================
+from sklearn.linear_model import LassoCV
+from sklearn.ensemble import RandomForestClassifier
+
 with tab4:
-    st.header("Selección de Variables - LASSO y Random Forest")
+    st.subheader("📌 Selección de Variables: LASSO vs Random Forest")
 
-    RANDOM_STATE = 42
-    UMBRAL_ACUM = st.sidebar.slider("Umbral acumulado para selección de variables", 0.5, 0.99, 0.8, 0.01)
-    N_ESTIMATORS = st.sidebar.slider("Número de árboles Random Forest", 100, 1000, 500, 50)
+    TARGET_COL = "Diagnóstico médico de diabetes"
 
-    # Filtrar columnas y target
-    vars_excluir = ["SEQN","Diagnóstico médico de diabetes","Diagnóstico médico de prediabetes","Uso actual de insulina"]
-    X = df.drop(columns=vars_excluir, errors="ignore")
-    y = df["Diagnóstico médico de diabetes"].map({"Sí":1, "No":0})
+    # --- Preparar dataset ---
+    X = df.drop(columns=["SEQN", "Diagnóstico médico de prediabetes", "Uso actual de insulina"], errors="ignore")
+    y = df[TARGET_COL].copy()
 
-    # Numéricas
-    X_num = X.select_dtypes(include=[np.number])
-    X_num = X_num.loc[:, X_num.isna().mean() <= 0.8]
-    X_num = X_num.fillna(X_num.median())
+    # Convertir objetivo a binario (0/1)
+    y = y.map({"Sí": 1, "No": 0})
 
-    # Categóricas
-    X_cat = X.select_dtypes(exclude=[np.number]).fillna("Missing").astype(str)
-    X_cat_enc = pd.get_dummies(X_cat, drop_first=True)
+    # Codificar categóricas
+    X_encoded = pd.get_dummies(X.drop(columns=[TARGET_COL], errors="ignore"), drop_first=True)
 
-    # Concatenar
-    X_all = pd.concat([X_num, X_cat_enc], axis=1)
-
-    # Eliminar filas con NaN residual (solo para seguridad)
-    X_all = X_all.dropna()
-    y = y.loc[X_all.index]
-
-    st.write(f"📌 Dataset final: {X_all.shape[0]} filas x {X_all.shape[1]} columnas")
-
-    # Split
-    from sklearn.model_selection import train_test_split
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_all, y, test_size=0.3, random_state=RANDOM_STATE, stratify=y
-    )
-
-    # LASSO
-    from sklearn.linear_model import LogisticRegression
+    # Imputación y escalado para LASSO
     from sklearn.preprocessing import StandardScaler
-    from sklearn.pipeline import Pipeline
-    lasso_pipe = Pipeline([
-        ("scaler", StandardScaler()),
-        ("lasso", LogisticRegression(penalty="l1", solver="liblinear", random_state=RANDOM_STATE, max_iter=1000))
-    ])
-    lasso_pipe.fit(X_train, y_train)
+    from sklearn.impute import SimpleImputer
 
-    coefs = lasso_pipe.named_steps["lasso"].coef_[0]
-    df_coefs = pd.DataFrame({"Variable": X_all.columns, "Coeficiente": coefs})
-    df_coefs["AbsCoef"] = df_coefs["Coeficiente"].abs()
-    df_coefs = df_coefs.sort_values("AbsCoef", ascending=False)
-    df_coefs["VarAcum"] = df_coefs["AbsCoef"].cumsum()/df_coefs["AbsCoef"].sum()
-    seleccionadas_lasso = df_coefs[df_coefs["VarAcum"]<=UMBRAL_ACUM]["Variable"].tolist()
+    imputer = SimpleImputer(strategy="median")
+    scaler = StandardScaler()
 
-    st.subheader("Variables seleccionadas por LASSO (L1)")
-    st.write(f"Número: {len(seleccionadas_lasso)}")
-    st.dataframe(df_coefs.head(20))
+    X_imp = imputer.fit_transform(X_encoded)
+    X_scaled = scaler.fit_transform(X_imp)
 
-    # Random Forest
-    from sklearn.ensemble import RandomForestClassifier
-    rf = RandomForestClassifier(n_estimators=N_ESTIMATORS, random_state=RANDOM_STATE)
-    rf.fit(X_train, y_train)
+    # === LASSO ===
+    lasso = LassoCV(cv=5, random_state=42, max_iter=10000)
+    lasso.fit(X_scaled, y)
 
-    importances = rf.feature_importances_
-    df_rf = pd.DataFrame({"Variable": X_all.columns, "Importancia": importances})
-    df_rf = df_rf.sort_values("Importancia", ascending=False)
-    df_rf["VarAcum"] = df_rf["Importancia"].cumsum()
-    seleccionadas_rf = df_rf[df_rf["VarAcum"]<=UMBRAL_ACUM]["Variable"].tolist()
+    coef = pd.Series(lasso.coef_, index=X_encoded.columns)
+    lasso_vars = coef[coef != 0].sort_values(key=abs, ascending=False)
 
-    st.subheader(f"Variables seleccionadas por Random Forest")
-    st.write(f"Número: {len(seleccionadas_rf)}")
-    st.dataframe(df_rf.head(20))
+    st.markdown("### 🔎 Variables seleccionadas por **LASSO**")
+    st.dataframe(lasso_vars.head(20))
 
-    # Variables comunes
-    comunes = list(set(seleccionadas_lasso).intersection(set(seleccionadas_rf)))
-    st.subheader("Variables seleccionadas por ambos métodos")
-    st.write(f"Número: {len(comunes)}")
-    st.dataframe(pd.DataFrame({"Variable": comunes}))
+    fig_lasso = px.bar(
+        lasso_vars.head(15).sort_values(),
+        x=lasso_vars.head(15).sort_values().values,
+        y=lasso_vars.head(15).sort_values().index,
+        orientation="h",
+        title="Top 15 coeficientes distintos de cero (LASSO)",
+        color=lasso_vars.head(15).abs().values,
+        color_continuous_scale="Viridis"
+    )
+    st.plotly_chart(fig_lasso, use_container_width=True)
 
+    # === Random Forest ===
+    rf = RandomForestClassifier(n_estimators=500, random_state=42)
+    rf.fit(X_imp, y)
 
+    importancias = pd.Series(rf.feature_importances_, index=X_encoded.columns)
+    rf_vars = importancias.sort_values(ascending=False)
+
+    st.markdown("### 🔎 Importancia de variables según **Random Forest**")
+    st.dataframe(rf_vars.head(20))
+
+    fig_rf = px.bar(
+        rf_vars.head(15).sort_values(),
+        x=rf_vars.head(15).sort_values().values,
+        y=rf_vars.head(15).sort_values().index,
+        orientation="h",
+        title="Top 15 variables más importantes (Random Forest)",
+        color=rf_vars.head(15).values,
+        color_continuous_scale="Plasma"
+    )
+    st.plotly_chart(fig_rf, use_container_width=True)
+
+    # === Comparación directa ===
+    st.subheader("📊 Comparación LASSO vs RF")
+    comparacion = pd.DataFrame({
+        "LASSO (|coef|)": lasso_vars.reindex(X_encoded.columns).abs(),
+        "Random Forest (importancia)": rf_vars.reindex(X_encoded.columns)
+    })
+
+    comparacion = comparacion.fillna(0)
+
+    fig_comp = px.scatter(
+        comparacion,
+        x="LASSO (|coef|)",
+        y="Random Forest (importancia)",
+        text=comparacion.index,
+        size="Random Forest (importancia)",
+        opacity=0.7,
+        title="Comparación de importancia de variables: LASSO vs Random Forest"
+    )
+    st.plotly_chart(fig_comp, use_container_width=True)
+
+    st.info("👉 LASSO fuerza coeficientes a cero (selección estricta), mientras que Random Forest distribuye importancia entre todas las variables.")
 
 
 # ======================================================
