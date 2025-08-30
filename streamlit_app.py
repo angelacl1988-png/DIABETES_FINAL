@@ -196,9 +196,6 @@ with tab2:
     st.write(f"Prevalencia uso de insulina: {prevalencia_insulina:.2f}% ({casos_insulina}/{total_pacientes} casos)")
 
 
-    # ============================
-    # Métricas en columnas
-    # ============================
     
     col1, col2, col3 = st.columns(3)
     
@@ -206,21 +203,22 @@ with tab2:
         st.metric(
             label="Diabetes",
             value=f"{prevalencia_diabetes:.2f}%",
-            delta=f"{casos_diabetes}/{total_diabetes} casos"
+            delta=f"{casos_diabetes}/{total_pacientes} casos"
         )
     with col1:
         st.metric(
             label="Prediabetes",
             value=f"{prevalencia_prediabetes:.2f}%",
-            delta=f"{casos_prediabetes}/{total_prediabetes} casos"
+            delta=f"{casos_prediabetes}/{total_pacientes} casos"
         )
     with col3:
         st.metric(
             label="Uso de Insulina",
             value=f"{prevalencia_insulina:.2f}%",
-            delta=f"{casos_insulina}/{total_insulina} casos"
+            delta=f"{casos_insulina}/{total_pacientes} casos"
         )
-
+            )
+    
 
 
 
